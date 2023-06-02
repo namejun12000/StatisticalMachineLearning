@@ -1,0 +1,167 @@
+---
+title: "Final Exam"
+author: "Nam Jun Lee"
+date: "12/15/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+library(ISLR)
+library(dplyr)
+library(car)
+library(splines)
+library(ggplot2)
+library(gam)
+library(gridExtra)
+library(flexmix)
+```
+
+# The response variable (y) of interest here is wage. Answer the following questions towards the development of a predictive model for this dataset.
+```{r import dataset}
+# Wage dataset into wage variable
+wage <- ISLR::Wage
+# show wage data str
+glimpse(wage)
+```
+
+## a. Implement a multiple linear regression model with wage as the response (y) and the variables age, maritl, race, education, and jobclass as predictors/independent variables and print the summary table of you model.
+```{r multi lm}
+# fit multiple linear regression model
+lm.fit <- lm(wage~age+maritl+race+education+jobclass, data=wage)
+# summary model
+summary(lm.fit)
+```
+
+## b. Discuss your interpretation of various aspects the summary table that you obtain in part (a).
+In the summary table, the null hypothesis is rejected because the p-value combined with **age**, **Marriage** in Maritl, **education**, and **jobclass** is 0.001. Since it is **Separated ** in Maritl and the test p-value of the **Black** in race is 0.05, the null hypothesis can be rejected. In addition, the adjusted r-squared tells us the variance ratio explained by the independent variable. It can be seen that the model has **29.24%** explanatory power and the RSE value is **35.1**.
+
+## c. Note that the independent variables maritl, race, education, and jobclass are categorical variables. In view of this observation perform a hypothesis test to determine whether each of these variables are significantly associated with the response variable.
+```{r wage categorical, fig.height=5, fig.width=10}
+# categorical vs response variabel plots
+a <- ggplot(wage, aes(x=maritl,y=wage)) + geom_boxplot()
+b <- ggplot(wage, aes(x=race,y=wage)) + geom_boxplot()
+c <- ggplot(wage, aes(x=jobclass,y=wage)) + geom_boxplot()
+d <- ggplot(wage, aes(x=education,y=wage)) + geom_boxplot()
+grid.arrange(a,b,c,d, ncol=2)
+# perform hypothesis test each categorical variables
+summary(aov(wage~maritl, data=wage))
+summary(aov(wage~race, data=wage))
+summary(aov(wage~jobclass, data = wage))
+summary(aov(wage~education, data= wage))
+```
+
+Independent variables maritl, race, education, and work classes are categorical variables, so first check the distribution through the plot. Married people have higher wages and Asian wages. It can be seen that the higher the educational background, the higher the wage. In addition, it can be seen that job class has higher wages when it is information than industrial. Also, it can be seen that there are many outliers at the top.  
+Considering these observations, a one-way analysis of variance to see if **each categorical variable affects wage shows that the null hypothesis is rejected because the p-value of all categorical variables is much lower than 0.05**.
+
+## d. Analyze the residuals of the model that you implemented in part (a). Discuss your observations and propose suitable solutions to the problems that you observe. In particular, make sure to comment on your observations regarding the issues of Heteroskedasticity and Collinearity.
+```{r wage residuals}
+# show residuals plot
+par(mfrow = c(2,2))
+plot(lm.fit)
+# find collinearity
+sqrt(vif(lm.fit)) > 2
+```
+
+There are several outliers in the residual versus fit plot, and the variance seems to be constant, but it is slightly more distributed on the right. The normal Q-Q is a Q-Q diagram for determining whether the residual follows a normal distribution. This graph shows that the residual distribution is skewed to the right. The residual versus leverage plot affects the statistical model coefficient because a specific value is outside the chef distance.  
+In conclusion, it is heteroskedasticity and it can be seen from the vif function that there is no multicollinearity problem.
+
+## e. Now consider the variable logwage as the response (y). Comment on the distinctions/similarities that you observe with respect to the model in Part (a) and your observations of Part (c) and Part (d). Describe which of the two models Part (a) or Part (e) is better suited model and which of the two versions of the response variables wage or logwage would you utilize in practice.
+```{r logwage model}
+# fit multiple linear regression model (response = logwage)
+lm.fit.log <- lm(logwage~age+maritl+race+education+jobclass, data=wage)
+# summary model
+summary(lm.fit.log)
+```
+
+In the summary table, the null hypothesis is rejected because the p-value combined with **age**, **Marriage** in Maritl, **education**, and **jobclass** is 0.001. **Separated** in Maritl p-value is 0.01, so it can be rejected the null hypothesis. Since it is **Divorced** in Maritl and the test p-value of the **Black** in race is 0.05, the null hypothesis can be rejected. In addition, the adjusted r-squared tells us the variance ratio explained by the independent variable. It can be seen that the model has **30.02%** explanatory power and the RSE value is **0.2943**.
+
+```{r logwage categorical, fig.height=5, fig.width=10}
+#categorical vs response variabel plots
+e <- ggplot(wage, aes(x=maritl,y=logwage)) + geom_boxplot()
+f <- ggplot(wage, aes(x=race,y=logwage)) + geom_boxplot()
+g <- ggplot(wage, aes(x=jobclass,y=logwage)) + geom_boxplot()
+h <- ggplot(wage, aes(x=education,y=logwage)) + geom_boxplot()
+grid.arrange(e,f,g,h, ncol=2)
+# perform hypothesis test each categorical variables
+summary(aov(logwage~maritl, data=wage))
+summary(aov(logwage~race, data=wage))
+summary(aov(logwage~jobclass, data = wage))
+summary(aov(logwage~education, data= wage))
+```
+As a result of visualizing the categorical dependent variable for logwage, it shows similar results to wage vs categorical variables, but it can be seen that there are many outliers at the bottom.  
+Considering these observations, a one-way analysis of variance to see if **each categorical variable affects logwage shows that the null hypothesis is rejected because the p-value of all categorical variables is much lower than 0.05**.
+
+```{r logwage residual}
+# show residuals plot
+par(mfrow = c(2,2))
+plot(lm.fit.log)
+# find collinearity
+sqrt(vif(lm.fit.log)) > 2
+```
+There are several outliers in the residual versus fit plot, and the variance seems to be constant. Normal Q-Q graph shows that the residual distribution is skewed to the left. The residual versus leverage plot affects the statistical model coefficient because a some specific value is outside the chef distance.  
+In conclusion, it is homogeneity and it can be seen from the vif function that there is no multicollinearity problem.  
+  
+Compare two models:  
+Exploratory power (higher is better model)
+$$wage (0.2924) < logwage (0.3002)$$
+MSE (lower is better model)
+$$ wage (35.1) < logwage (0.2943)$$
+In addition, when comparing the residual graphs of the two models, the residual of the model with logwage as the response variable follows the normal distribution better.  
+Therefore, **it can be seen that the model in which the response variable is set to logwage is a more suitable model**.
+
+## f. The models considered so far have been linear regression models. Use the poly() function to fit polynomial regression (of degree 3) to the above data (recall that age is the only continuous predictor variable), use the response variable that you recommended in Part e.
+
+It is judged that it would be more appropriate to use the logwage response variable, so logwage is set as the response variable.  
+```{r poly model}
+# fit polynomial regression model (degree 3)
+fit.poly = lm(logwage~poly(age,3)+maritl+race+education+jobclass, data=wage)
+# summary model
+summary(fit.poly)
+```
+
+In the summary table, the null hypothesis is rejected because the p-value combined with **age**, **age^2**, **Marriage** in Maritl, **education**, and **jobclass** is 0.001. **age^3** p-value is 0.01, so it can be rejected the null hypothesis. Since p-value of the **Black** in race is 0.05, the null hypothesis can be rejected. In addition, the adjusted r-squared tells us the variance ratio explained by the independent variable. It can be seen that the model has **32.47%** explanatory power and the RSE value is **0.2943**.
+
+## g. Construct a Generalized additive model with all predictor variables while utilizing a natural cubic spline to the above data using the ns() function wherever appropriate. You can utilize 3 knots.
+```{r fit gam}
+# Sets the value of an attribute on the specified element knots
+attr(ns(wage$age,4), "knots")
+# fit generalized addtive model with all predictor variables
+fit.gam1 = gam(logwage~ns(year,4) +ns(age,4)+maritl+race+education+jobclass+health+health_ins, data=wage)
+# fit generalized addtive model with set predictor variables (age,maritl,race,education,jobclass)
+fit.gam2 = gam(logwage~ ns(age,4)+maritl+race+education+jobclass, data=wage)
+# compare best fit gam model
+anova(fit.gam1,fit.gam2)
+```
+
+The knots were divided into 25%, 50%, and 75%, and model1 using all explanatory variables and model2 using age, maritl, race, education, and jobclass were compared.  
+Through the anova test, it can be seen that Model 2 is a more suitable model.
+
+```{r gam model}
+# summary gam model
+summary(fit.gam2)
+```
+The null hypothesis is rejected because the p-value of all variables is much lower than 0.05 in generalized additive model.
+
+## h. Comment on which one of the several models that you constructed in the above exercises is the best suited for the data under consideration and support your conclusions with numerical evidence.
+```{r compare model}
+# find AIC
+AIC(lm.fit.log, fit.poly, fit.gam2)
+# find BIC
+BIC(lm.fit.log, fit.poly, fit.gam2)
+# compare three models
+anova(lm.fit.log, fit.poly, fit.gam2)
+```
+Obtained AIC and BIC of several models constructed in the above exercise (the smaller the AIC and BIC, the better the model).  
+AIC:  
+Linear regression: **1189.713**  
+Polynomial regression: **1084.727**  
+Generalized additive model: **1086.629**  
+$$Linear < GAM < Polynomial$$
+BIC:  
+Linear regression: **1279.808**  
+Polynomial regression: **1186.835**  
+Generalized additive model: **1194.744** 
+$$Linear < GAM < Polynomial$$
+As such, the values of AIC and BIC of the polynomial regression model are the smallest, and additional three models are compared through anova test, indicating that the **polynomial regression model is the most suitable model**.
+

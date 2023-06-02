@@ -1,0 +1,333 @@
+---
+title: "Homework2"
+author: "Nam Jun Lee"
+date: '10/14/2021'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+library(ISLR)
+library(caret)
+library(glmnet)
+```
+
+# Q1. Do Question 14. of Chapter 3 of the ISLR book. (Page 125).
+
+## a. Perform the following commands in R:
+```{r perform}
+set.seed(1)
+x1=runif (100)
+x2=0.5*x1+rnorm (100)/10
+y=2+2*x1+0.3*x2+rnorm (100)
+```
+
+## The last line corresponds to creating a linear model in which y is a function of x1 and x2. Write out the form of the linear model. What are the regression coefficients?
+
+Regression Coeffcients:   
+$\beta0$ = **2 + rnorm(100)**  
+$\beta1$ = **2**  
+$\beta3$ = **0.3**
+
+## b. What is the correlation between x1 and x2? Create a scatterplot displaying the relationship between the variables.
+
+```{r between x1 and x2}
+# correlation between x1 & x2
+cor(x1, x2)
+# scatterplot x1 and x2
+plot(x1, x2, main = 'Relation between x1 and x2',
+     xlab = 'x1', ylab = 'x2')
+```
+
+Correlation between x1 and x2 is **0.8351212**. It means between x1 and x2 have a **high positive correlation**.
+
+## c. Using this data, fit a least squares regression to predict y using x1 and x2. Describe the results obtained. What are $\beta0$, $\beta1$, and $\beta2$? How do these relate to the true $\beta0$, $\beta1$, and $\beta2$? Can you reject the null hypothesis H0 : $\beta1$ = 0? How about the null hypothesis H0 : $\beta2$ = 0?
+
+```{r predict x1 and x2}
+lm.fit <- lm(y~x1+x2)
+summary(lm.fit)
+```
+
+Coefficient estimates: $\beta0$ = **2.1305**, $\beta1$ = **1.4396**, $\beta2$ = **1.0097** It means there are poor estimates.  
+$\beta1$, **can only reject the null hypothesis** at a 99 % lv of confindence. (less than 0.05)  
+$\beta2$, **may not reject the null hypothesis**. (higher than 0.05)
+
+## d. Now fit a least squares regression to predict y using only x1. Comment on your results. Can you reject the null hypothesis H0 : $\beta1$ = 0?
+
+```{r predict only x1}
+lm.fit1 <- lm(y~x1)
+summary(lm.fit1)
+```
+
+In this case x1 is highly significant as p-value is very lower, therefore, **may reject $\beta0$**.
+
+## e. Now fit a least squares regression to predict y using only x2. Comment on your results. Can you reject the null hypothesis H0 : $\beta1$ = 0?
+
+```{r predict only x2}
+lm.fit2 <- lm(y~x2)
+summary(lm.fit2)
+```
+
+In this case x2 is highly significant as p-value is very lower, therefore, **may reject $\beta0$**.
+
+## f. Do the results obtained in (c)–(e) contradict each other? Explain your answer.
+
+In part (c), it was found that **x1 and x2 were not significant** based on the multiple linear regression model.  
+However, part (d) and part (e) show that **each x1 and x2 is actually highly significant**. Therefore, this was *contradictory*.
+
+## g. Now suppose we obtain one additional observation, which was unfortunately mismeasured.
+
+```{r question g}
+x1 = c(x1, 0.1)
+x2 = c(x2, 0.8)
+y = c(y, 6)
+```
+
+## Re-fit the linear models from (c) to (e) using this new data. What effect does this new observation have on the each of the models? In each model, is this observation an outlier? A high-leverage point? Both? Explain your answers.
+
+```{r new predict}
+# refit (c)
+lm.fit3 = lm(y~x1+x2)
+summary(lm.fit3)
+
+par(mfrow = c(2,2))
+plot(lm.fit3)
+```
+
+Although the adjusted R-square value has risen slightly, it is still significantly lower. (20.29%)  
+Compared to the previous model, it can be seen that the x2 variable is statistically introduced, and conversely, the x1 variable is not significant.   
+The Residuals versus Fitted plot does follow a normal distribution with constant variance. The Scale-Location plot has several outliers, and the figure of Residuals versus Leverage plot indicates that there are several leverage points.
+
+```{r new predict1}
+# refit (d)
+lm.fit4 = lm(y~x1)
+summary(lm.fit4)
+
+par(mfrow = c(2,2))
+plot(lm.fit4)
+```
+
+In both the previous model and the changed model, x1 is statistically significant for the fluctuation of y. However, the adjusted R-square value was lowered and this shows that the changed model is a worse model than the previous one. (19.42% -> 14.77%)  
+The Residuals versus Fitted plot does follow a normal distribution with constant variance but has several outliers. The Scale-Location plot has also several outliers, and the figure of Residuals versus Leverage plot indicates that there are several leverage points.
+
+```{r new predict2}
+# refit (e)
+lm.fit5 = lm(y~x2)
+summary(lm.fit5)
+# diagnostic plots of the least squares regression (lm.fit5)
+par(mfrow = c(2,2))
+plot(lm.fit5)
+```
+
+In both the previous and changed models, x2 is statistically significant for fluctuations in y. However, the adjusted R-square value increased, indicating that the changed model is a better model than the previous model. (16.79% -> 20.42%)  
+The Residuals versus Fitted plot does follow a normal distribution with constant variance but has several outliers. The Scale-Location plot has also several outliers, Normal Q-Q plot has also some outliers, and the figure of Residuals versus Leverage plot indicates that there are several leverage points.
+
+# Q2. Before attempting this question, set the seed number in R by using set.seed(1) to ensure consistent results.
+
+## a. Simulate a training data set of n = 25 observations as y = exp(x) + $\epsilon$ where x and $\epsilon$ are generated via a normal distribution with mean zero and standard deviation one. (use rnorm() to simulate these variables).
+
+```{r training data}
+set.seed(1)
+n = 25
+X <- rnorm(n, mean=0, sd=1)
+E <- rnorm(n, mean=0, sd=1)
+Y = exp(X) + E
+plot(X, Y)
+```
+
+## b. Fit the following four linear regression models to the above training data set (using the lm() function in R).
+
+### (i) y = $\beta0$ + $\beta1$x + $\epsilon$ .
+
+```{r first linear regression}
+fit.first <- lm(Y~X)
+summary(fit.first)
+```
+
+### (ii) y = $\beta0$ + $\beta1$x + $\beta2$$x^2$ + $\epsilon$.
+
+```{r second linear regression}
+fit.second <- lm(Y~X + I(X^2))
+summary(fit.second)
+```
+
+### (iii) y = $\beta0$ + $\beta1$x + $\beta2$$x^2$ + $\beta3$$x^3$ + $\epsilon$.
+
+```{r third linear regression}
+fit.third <- lm(Y~X + I(X^2) + I(X^3))
+summary(fit.third)
+```
+
+### (iv) y = $\beta0$ + $\beta1$x + $\beta2$$x^2$ + $\beta3$$x^3$ + $\beta4$$x^4$ + $\epsilon$.
+
+```{r fourth linear regression}
+fit.fourth <- lm(Y~X + I(X^2) + I(X^3) + I(X^4))
+summary(fit.fourth)
+```
+
+## c. Now simulate a testing data set with n = 500 observations from the model in part (a), by generating new values of x and $\epsilon$.
+
+```{r new training data}
+# new values of x and E
+n1 = 500
+X1 <- rnorm(n1, mean=0, sd=1)
+E1 <- rnorm(n1, mean=0, sd=1)
+Y1 = exp(X1) + E1
+plot(X1, Y1)
+```
+
+## d. Use the estimated coefficients in Part (b) to compute the test error, i.e. the MSE = $\frac{1}{n}\sum(y_i-\widehat{y_i})^{2}$ of the testing data set for each of the four models computed in part (b).
+
+### First Model:
+
+```{r first model}
+b = rep(1,n1)
+x1 = matrix(c(b,X1),byrow=F,nrow=n1)
+b1 = as.matrix(fit.first$coefficients)
+widehat1 = x1 %*% b1
+MSE1 = sum((Y1-widehat1)^2)/n1
+MSE1
+```
+
+### Second Model:
+
+```{r second model}
+x2 = matrix(c(b,X1,I(X1^2)),byrow=F, nrow=n1)
+b2 = as.matrix(fit.second$coefficients)
+widehat2 = x2 %*% b2
+MSE2 = sum((Y1-widehat2)^2)/n1
+MSE2
+```
+
+### Third Model:
+
+```{r third model}
+x3 = matrix(c(b,X1, I(X1^2), I(X1^3)),byrow=F, nrow=n1)
+b3 = as.matrix(fit.third$coefficients)
+widehat3 = x3 %*% b3
+MSE3 = sum((Y1-widehat3)^2)/n1
+MSE3
+```
+
+### Fourth Model:
+
+```{r fourth model}
+x4 = matrix(c(b,X1, I(X1^2), I(X1^3), I(X1^4)),byrow=F, nrow=n1)
+b4 = as.matrix(fit.fourth$coefficients)
+widehat4 = x4 %*% b4
+MSE4 = sum((Y1-widehat4)^2)/n1
+MSE4
+```
+
+## e. Based on your results of Part (b), which model would you reccommend as the ‘best fit model’? is the conclusion suprising?
+
+See above all four models MSE values.  
+First model MSE: **5.70084**  
+Second model MSE: **3.232397**   
+Third model MSE: **3.631079**  
+Fourth model MSE: **4.733067**  
+Second model MSE value is 3.232397; this is lowest MSE among that 4 models. Therefore, best fit model is **[Second model]**.  
+Equation: $Y = 0.9123 + 1.3803 * X + 0.6007 * {X^2}$.
+
+
+# Q3. Consider the Hitters data in the ISLR package, our objective here is to predict the salary variable as the response using the remaining variables.
+
+```{r hitters}
+# Hitters dataset into hitters
+hitters <- ISLR::Hitters
+# columns in hitters
+names(hitters)
+# find NA in hitters Salary variable
+sum(is.na(hitters$Salary))
+# Remove all NA in hitters dataset
+hitters <- na.omit(hitters)
+```
+
+## a. Split the data into a training and testing data set.
+
+```{r split}
+# Split the dataset into train and test
+set.seed(1)
+train = sample(c(TRUE,FALSE), nrow(hitters), rep=TRUE)
+test=(!train)
+hitters_train = hitters[train,]
+hitters_test = hitters[test,]
+```
+
+## b. Fit a linear model using least squares on the training set and report the test error obtained.
+
+```{r linear model}
+# linear model
+lm.fit_hit = lm(Salary~., data=hitters_train)
+lm.pred = predict(lm.fit_hit, hitters_test)
+test_error <- mean((lm.pred - hitters_test$Salary)^2)
+test_error
+```
+
+## c. Fit a ridge regression model on the training set, with $\lambda$ chosen by cross-validation. Report the test error obtained.
+
+```{r ridge model}
+# set up matrices neede for glmnet fucntions
+train_mo = model.matrix(Salary~., data=hitters_train)
+test_mo = model.matrix(Salary~., data=hitters_test)
+# cross validation by ridge regression alpha = 0
+set.seed(1)
+cv1 <- cv.glmnet(train_mo, hitters_train$Salary, alpha=0)
+lam1 = cv1$lambda.min
+ridge_model = glmnet(train_mo, hitters_train$Salary, alpha = 0)
+ridge_pred = predict(ridge_model, s = lam1, newx = test_mo)
+ridge_test_error <- mean((ridge_pred - hitters_test$Salary)^2)
+ridge_test_error
+```
+
+## d. Fit a lasso model on the training set, with $\lambda$ chosen by cross validation. Report the test error obtained, along with the number of non-zero coefficients estimates.
+
+```{r lasso model}
+# cross validation by lasso model alpha = 1
+set.seed(1)
+cv2 <- cv.glmnet(train_mo, hitters_train$Salary, alpha = 1)
+lam2 = cv2$lambda.min
+lasso_model = glmnet(train_mo, hitters_train$Salary, alpha = 1)
+lasso_pred = predict(lasso_model, s = lam2, newx = test_mo)
+lasso_test_error = mean((lasso_pred - hitters_test$Salary)^2)
+lasso_test_error
+```
+
+## e. Commment on the results obtained. How accurately can we predict the number of college applications recieved? Is there much difference among the test errors resulting from these three approaches?
+
+```{r result}
+# compute total average
+total_avg = sum((mean(hitters_test$Salary) - hitters_test$Salary)^2)
+# ridge
+total_ridge = sum((ridge_pred - hitters_test$Salary)^2)
+# lasso
+total_lasso = sum((lasso_pred - hitters_test$Salary)^2)
+# linear
+total_linear = sum((lm.pred - hitters_test$Salary)^2)
+# compute ridge R square value
+ridge_mod <- 1 - (total_ridge)/(total_avg)
+# compute lasso R square value
+lasso_mod <- 1 - (total_lasso)/(total_avg)
+# compute linear R square value
+linear_mod <- 1 - (total_linear)/(total_avg)
+# show each MSE values
+ridge_test_error
+lasso_test_error
+test_error
+# show each ridge, lasso, and linear R square values
+ridge_mod
+lasso_mod
+linear_mod
+```
+
+Compare MSE for each three models:   
+Ridge model MSE: **145635.3**.  
+Lasso model MSE: **141599.6**.   
+Linear model MSE: **142238.2**.  
+Best MSE value: $$Lasso > Linear > Ridge$$
+Compare R square for each three models:  
+Test for ridge model R square value: **0.2869518**. (28.70 %)  
+Test for lasso model R square value: **0.306711**. (30.67 %)   
+Test for linear model R square value: **0.3035847**. (30.36 %)   
+Best R square value: $$Lasso > Linear > Ridge$$
+Therefore, the **Lasso model seems to be the most accurately predictable**. However, there **are not many differences** in the three approaches and they **are similar**.

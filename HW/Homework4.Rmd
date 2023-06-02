@@ -1,0 +1,477 @@
+---
+title: "Homework4"
+author: "Nam Jun Lee"
+date: '12/03/2021'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+library(ISLR)
+library(ggplot2)
+library(gam)
+library(boot)
+library(leaps)
+library(GGally)
+library(splines)
+library(gridExtra)
+library(MASS)
+```
+
+# Q1. Question 7 of Chapter 7 of the ISLR book. (Page 299).
+
+## The Wage data set contains a number of other features not explored in this chapter, such as marital status (maritl), job class (jobclass), and others. Explore the relationships between some of these other predictors and wage, and use non-linear fitting techniques in order to fit flexible models to the data. Create plots of the results obtained, and write a summary of your findings.
+
+```{r wage}
+# Wage dataset into Wage variable
+Wage <- ISLR::Wage
+# summary of Wage dataset
+summary(Wage)
+```
+
+When checking this wage dataset, it can be seen that categorical variables are maritl, race, education, region, job class, health, and health_ins. In addition, the region variable is divided into six categories, but considering that there are 3,000 middle atlantic alone, it is better to exclude this variable.
+
+```{r maritl, fig.height=3, fig.width=6}
+# box plot maritl variable
+ggplot(data=Wage, aes(x=maritl, y=wage, color=maritl))+geom_boxplot()+
+  ggtitle("Wage vs Maritl")
+```
+
+When visualizing the maritl variable for wage, it can be seen that the married category is the highest and that outliers exist.
+
+```{r race}
+# box plot race variable
+ggplot(data=Wage, aes(x=race, y=wage, color=race))+
+  geom_boxplot() +
+  ggtitle("Wage vs Race")
+```
+When visualizing the race variable for wage, it can be seen that the asian category is the highest and that outliers exist.
+
+```{r education, fig.height=4, fig.width=6}
+# boxplot eductaion variable
+ggplot(data=Wage, aes(x=education, y=wage, color=education))+geom_boxplot()+
+  ggtitle("Wage vs Education") + 
+  theme(axis.text.x = element_text(angle = 60, 
+                                   hjust = 0.35, 
+                                   vjust =0.5))
+```
+
+When visualizing the education variable for wage, it can be seen that the advanced degree category is the highest and that outliers exist.
+
+```{r region}
+# boxplot region variable
+ggplot(data=Wage, aes(x=region, y=wage, color=region))+geom_boxplot()+ggtitle("Wage vs Region")
+```
+
+Visualizing the regional variable for wages shows that this variable is not suitable for modeling, given that only Middle Atlantic exists.
+
+```{r jobclass}
+#box plot job class variable
+ggplot(data=Wage, aes(x=jobclass, y=wage, color=jobclass))+geom_boxplot()+ggtitle("Wage vs Job Class")
+```
+
+When visualizing the job class variable for wage, it can be seen that the information category is more higher than industrial and that outliers exist.
+
+```{r health}
+# box plot health and health insurance variables
+ggplot(data=Wage, aes(x=health, y=wage, color=health_ins))+geom_boxplot()+ggtitle("Wage vs health")
+```
+
+When visualizing the health and health insurance variables for wage, It can be seen that having insurance is higher in wages than not having insurance and that outliers exist.
+
+```{r fit model}
+# fit a GAM
+gam.m1 <- gam(wage~lo(year,span=0.7)+s(age,5), data = Wage)
+gam.m2 <- gam(wage~lo(year,span=0.7)+education, data=Wage)
+gam.m3 <- gam(wage~lo(year,span=0.7)+maritl, data=Wage)
+gam.m4 <- gam(wage~lo(year,span=0.7)+s(age,5)+maritl+education+jobclass, data = Wage)
+gam.m5 <- gam(wage~lo(year,span=0.7)+s(age,5)+maritl+ race + education, data=Wage)
+gam.m6 <- gam(wage~lo(year,span=0.7)+s(age,5)+maritl+ race + education + jobclass, data=Wage)
+gam.m7 <- gam(wage~lo(year,span=0.7)+s(age,5)+maritl+ race + education + health, data=Wage)
+gam.m8 <- gam(wage~lo(year,span=0.7)+s(age,5)+maritl+ race + education + health_ins, data=Wage)
+gam.m9 <- gam(wage~lo(year,span=0.7)+s(age,5)+maritl+ race + education + health_ins + health + jobclass, data=Wage)
+# compare the models
+anova(gam.m1,gam.m2,gam.m3,gam.m4,gam.m5,gam.m6,gam.m7,gam.m8,gam.m9, test="F")
+```
+
+When the model is fitted and the model is compared, the **fourth model** is judged to be the best fit.
+Also, the evidence that there is a nonlinear relationship with the response is **age**.
+
+```{r show best model wage, fig.height=5, fig.width=6}
+# split plot 2, 2
+par(mfrow=c(2,2))
+# show best model plots
+plot(gam.m4,se=TRUE,col="darkgreen")
+# summary model
+summary(gam.m4)
+```
+
+When checking the results of the fourth model in the figure, it can be seen that the **higher the education level**, the higher the wage, the higher the wage for **married people**, and the higher the wage for those in their **40s**. It can also be seen that **information** wages are higher than industries.
+
+# Q2. Question 8 of Chapter 7 of the ISLR book. (Page 299).
+
+```{r auto}
+# Auto dataset into Auto variable
+Auto <- ISLR::Auto
+```
+
+## Fit some of the non-linear models investigated in this chapter to the Auto data set. Is there evidence for non-linear relationships in this data set? Create some informative plots to justify your answer.
+
+```{r show plot, fig.height=5, fig.width=8}
+# show all variables using plots (mpg)
+# mpg vs cylinders
+p1 <- ggplot(Auto, aes(x=mpg,y=cylinders)) + geom_point() + 
+  ggtitle("mpg vs cylinders") 
+# mpg vs displacement
+p2 <- ggplot(Auto, aes(x=mpg,y=displacement)) + geom_point() +
+  ggtitle("mpg vs displacement") 
+# mpg vs horsepower
+p3 <- ggplot(Auto, aes(x=mpg,y=horsepower)) + geom_point() +
+  ggtitle("mpg vs horsepower") 
+# mpg vs weight
+p4 <- ggplot(Auto, aes(x=mpg,y=weight)) + geom_point() +
+  ggtitle("mpg vs weight") 
+# mpg vs acceleration 
+p5 <- ggplot(Auto, aes(x=mpg,y=acceleration)) + geom_point() +
+  ggtitle("mpg vs acceleration") 
+# mpg vs year
+p6 <- ggplot(Auto, aes(x=mpg,y=year)) + geom_point() +
+  ggtitle("mpg vs year") 
+# mpg vs origin
+p7 <- ggplot(Auto, aes(x=mpg,y=origin)) + geom_point() +
+  ggtitle("mpg vs origin") 
+# mpg vs name
+p8 <- ggplot(Auto, aes(x=mpg,y=name)) + geom_point() +
+  ggtitle("mpg vs name") 
+# shows several graphs on the screen
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8, nrow=3, ncol=3)
+```
+
+When checking all variables for mpg, it can be seen that the **displacement, horsepower, weight, acceleration** variables are nonlinear. Therefore, I will fit these four variables into a flexible model.
+
+```{r fit displacement}
+# polynomial regression
+fit.disp = lm(mpg~poly(displacement,3), data=Auto)
+# summary of fit.disp
+summary(fit.disp)
+# make predictions
+displims = range(Auto$displacement)
+disp.grid = seq(displims[1],displims[2],length.out = 200)
+preds.disp = predict(fit.disp, newdata = list(displacement=disp.grid),se=T)
+# make 95% confidence intervals for predictions
+fitted = preds.disp$fit
+lower = fitted-2*preds.disp$se.fit
+upper=fitted+2*preds.disp$se.fit
+#visualize the model + confidence intervals (displacement)
+df=data.frame(value=c(fitted,lower,upper), displacement=rep(disp.grid,3), 
+              type=c(rep("fitted",length(disp.grid)),
+                     rep("lower",length(disp.grid)),
+                     
+                     rep("upper",length(disp.grid))))
+ggplot(data=df, aes(x=displacement,y=value,color=type, linetype= type))+geom_line() + ggtitle("mpg vs displacement")
+```
+
+```{r fit horsepower}
+# polynomial regression
+fit.horse = lm(mpg~poly(horsepower,3), data=Auto)
+# summary horsepower
+summary(fit.horse)
+# make predictions
+hlims = range(Auto$horsepower)
+h.grid = seq(hlims[1],hlims[2],length.out = 200)
+preds.h = predict(fit.horse, newdata = list(horsepower=h.grid),se=T)
+# make 95% confidence intervals for predictions
+fitted = preds.h$fit
+lower = fitted-2*preds.h$se.fit
+upper=fitted+2*preds.h$se.fit
+# visualize the model and confidence intervals (horsepower)
+df1=data.frame(value=c(fitted,lower,upper), horsepower=rep(h.grid,3), 
+               type=c(rep("fitted",length(h.grid)),
+                     rep("lower",length(h.grid)),
+                     
+                     rep("upper",length(h.grid))))
+ggplot(data=df1, aes(x=horsepower,y=value,color=type, linetype= type))+geom_line() + 
+  ggtitle("mpg vs horsepower")
+```
+
+```{r weight}
+# polynomial regression
+fit.w = lm(mpg~poly(weight,3), data=Auto)
+# summary weight
+summary(fit.w)
+# make predictions
+wlims = range(Auto$weight)
+w.grid = seq(wlims[1],wlims[2],length.out = 200)
+preds.w = predict(fit.w, newdata = list(weight=w.grid),se=T)
+# make 95% confidence intervals for predictions
+fitted = preds.w$fit
+lower = fitted-2*preds.w$se.fit
+upper=fitted+2*preds.w$se.fit
+# viusalize the model and confidence intervals (weight)
+df2=data.frame(value=c(fitted,lower,upper), weight=rep(w.grid,3), 
+              type=c(rep("fitted",length(w.grid)),
+                     rep("lower",length(w.grid)),
+                     
+                     rep("upper",length(w.grid))))
+ggplot(data=df2, aes(x=weight,y=value,color=type, linetype= type))+geom_line() + 
+  ggtitle("mpg vs weight")
+```
+
+```{r acceleration}
+# polynomial regression
+fit.acc = lm(mpg~poly(acceleration,5), data=Auto)
+# summary acceleration
+summary(fit.acc)
+# make predictions
+alims = range(Auto$acceleration)
+a.grid = seq(alims[1],alims[2],length.out = 200)
+preds.a = predict(fit.acc, newdata = list(acceleration=a.grid),se=T)
+# make 95% confidence intervals for predictions
+fitted = preds.a$fit
+lower = fitted-2*preds.a$se.fit
+upper=fitted+2*preds.a$se.fit
+# visualize the model and confidence intervals (acceleration)
+df3=data.frame(value=c(fitted,lower,upper), acceleration=rep(a.grid,3), 
+              type=c(rep("fitted",length(a.grid)),
+                     
+                     rep("lower",length(a.grid)),
+                     rep("upper",length(a.grid))))
+ggplot(data=df3, aes(x=acceleration,y=value,color=type, linetype= type)) + geom_line() + 
+  ggtitle("mpg vs acceleration")
+```
+
+```{r model test}
+# fit model using game
+gam1 = gam(mpg~displacement+weight+acceleration+horsepower, data= Auto)
+gam2 = gam(mpg~s(displacement,3) + s(horsepower,3) + s(weight,3) + s(acceleration,5), data= Auto)
+gam3 = gam(mpg~s(displacement,5) + s(weight,5) +  s(acceleration,5), data= Auto)
+# compare models
+anova(gam1,gam2,gam3, test="F")
+```
+
+As a result of evaluating the modeling through these four variables, it can be seen that the **second model** is the most suitable.
+
+```{r summary model}
+# summary best model
+summary(gam2)
+# visualize the best model 
+par(mfrow=c(2,2))
+plot(gam2,se=TRUE,col="green")
+```
+Visualizing the second model shows that the higher the displacement and weight, the larger the mpg and the higher the acceleration, the larger the mpg.  
+As a result of summarizing the model, it can be seen that the displacement, horsepower are significant because the p-value value is lower than 0.05.  On the contrary, weight and acceleration are not significant because p value more than 0.05 and there is no evidence of nonlinear effects, so it can be seen that there is a linear effect.   
+Thus, evidence of a non-linear relationship with the response are **displacement** and **horsepower**.
+
+# Q3. Question 9 of Chapter 7 of the ISLR book. (Page 299).
+
+## This question uses the variables dis (the weighted mean of distances to five Boston employment centers) and nox (nitrogen oxides concentration in parts per 10 million) from the Boston data. We will treat dis as the predictor and nox as the response.
+
+```{r boston}
+# Boston dataset into bt
+bt <- MASS::Boston
+```
+
+## a. Use the poly() function to fit a cubic polynomial regression to predict nox using dis. Report the regression output, and plot the resulting data and polynomial fits.
+
+```{r cubic polynomial boston}
+# polynomial regression
+fitbt = lm(nox~poly(dis,3), data=bt)
+# summary predict nox using dis
+summary(fitbt)
+# make predictions
+dislims = range(bt$dis)
+dislims
+dis.grid = seq(dislims[1],dislims[2], length.out = 200)
+predsbt = predict(fitbt, newdata=list(dis=dis.grid), se=T)
+# make 95% confidence intervals for predictions
+fitted = predsbt$fit
+lower = fitted - 2 * predsbt$se.fit
+upper = fitted + 2 * predsbt$se.fit
+bands = cbind(upper,lower)
+# visualize the model and confidence intervals
+plot(x=bt$dis,y=bt$nox,xlim=dislims,cex=0.5,col="darkgrey",xlab = "dis", ylab="nox", col.lab="blue")
+lines(dis.grid,fitted,lwd=2,col="blue")
+matlines(dis.grid,bands,lwd=1,col="blue",lty=3)
+title(main = "nox vs dis",
+col.main="darkblue",
+cex.main = 1)
+```
+As a result of spline suitability, it can be concluded that it is significant that most of the terms fit well, but there is a limit to the tail.
+
+## b. Plot the polynomial fits for a range of different polynomial degrees (say, from 1 to 10), and report the associated residual sum of squares.
+
+```{r rss}
+# set range 1 to 10
+ran0 <- 1:10
+# set rss polynomial degrees
+rss1 <- rep(0,10)
+# polynomial fits from 1 to 10
+for (i in 1:10) {
+  fitPoly10 <- lm(nox ~poly(dis, i), data = bt)
+  rss1[i] <- sum(fitPoly10$residuals^2) # compute rss
+}
+# show plot
+plot(ran0, rss1, xlab = "Degree", ylab="RSS")
+lines(ran0,rss1,lwd=2,col="red")
+title(main="Polynomial degree with RSS")
+points(which.min(rss1),rss1[which.min(rss1)], col = "darkred", pch = 20, cex = 1.8)
+```
+It can be seen that **10** degree is the minimum and It can be seen that RSS decreases as flexibility increases with polynomial degree.
+
+## c. Perform cross-validation or another approach to select the optimal degree for the polynomial, and explain your results.
+
+```{r cv}
+# set seed
+set.seed(123)
+# set range 1 to 10
+ran <- 1:10
+# set mse 1 to 10
+cv.error1 <- rep(0,10)
+for (i in 1:10) {
+  fitPoly = glm(nox ~ poly(dis, i), data = bt)
+  cv.error1[i] = cv.glm(bt, fitPoly,K=10)$delta[1] # compute mse
+}
+# show plot
+plot(ran,cv.error1, xlab = "Degree", ylab = "cv.error")
+lines(ran,cv.error1,lwd=2,col="blue")
+title(main="Polynomial degree with CV Error")
+points(which.min(cv.error1),cv.error1[which.min(cv.error1)], col = "darkblue", pch = 20, cex = 1.8)
+```
+As a result of dividing the data into 10 segments for cross-validation, it can be seen that the selected fit is a spline with **3** degree of freedom.
+
+## d. Use the bs() function to fit a regression spline to predict nox using dis. Report the output for the fit using four degrees of freedom. How did you choose the knots? Plot the resulting fit.
+
+```{r regression spline}
+# bs() function to fit a regression spline four degrees of freedom
+fitbs = lm(nox~bs(dis, df = 4), data= bt)
+# show knots
+attr(bs(bt$dis,df=4),"knots")
+# make 95% confidence intervals for predictions
+dislims1 = range(bt$dis)
+dis.grid1 = seq(dislims1[1],dislims1[2],length.out=200)
+predsDis = predict(fitbs, newdata = list(dis=dis.grid1),se=T)
+fittedDis = predsDis$fit
+lowerDis = fittedDis - 2 * predsDis$se.fit
+upperDis = fittedDis + 2 * predsDis$se.fit
+# visualize the model and confidence intervals
+dfDis <- data.frame(value = c(fittedDis,lowerDis,upperDis), dis=rep(dis.grid,3), type=c(rep("fitted",length(dis.grid1)),
+                     rep("lower",length(dis.grid1)),
+                     rep("upper",length(dis.grid1))))
+ggplot() + geom_line(data=dfDis, aes(x=dis,y=value, color=type, linetype=type))+ geom_point(data=bt,aes(x=dis, y=nox),size=0.1, colour = "grey") + 
+  ggtitle("nox vs displacement")
+```
+As a result of predicting nox using dis by fitting the regression spline using degree of freedom of 4 degree, **it can be seen that once the knots are 1, all terms of spline fit are significant**.
+
+## e. Now fit a regression spline for a range of degrees of freedom, and plot the resulting fits and report the resulting RSS. Describe the results obtained.
+
+```{r spline rss}
+# set range 3 to 12
+ran1 <- 3:12
+# set rss range 1 to 10
+rss1 <- rep(0, 10)
+for (i in 3:12) {
+  fitSpline <- lm(nox ~ bs(dis, df = i), data = bt)
+  rss1[i-2] <- sum(fitSpline$residuals^2) # compute rss
+}
+# show plot
+plot(ran1, rss1, xlab = "Degree", ylab = "RSS")
+lines(ran1,rss1,lwd=2,col="darkorange")
+title(main="Degrees of freedom with RSS")
+```
+
+When the degree of freedom is set from 3 to 12, it can be seen that the RSS of degrees of freedom **12** is the lowest, and whenever additional degrees of freedom are allowed, the trend is not simple.
+
+## f. Perform cross-validation or another approach in order to select the best degrees of freedom for a regression spline on this data. Describe your results.
+```{r cv spline2, warning = FALSE, message = FALSE}
+# set seed
+set.seed(1)
+# set range 3 to 12
+ran2 <- 3:12
+# set mse range 1 to 10 and regression spline
+cv.error2 <- rep(0, 10)
+for (i in 3:12) {
+  fit.cross.spline = glm(nox ~ bs(dis, df = i), data = bt)
+  cv.error2[i-2] = cv.glm(bt, fit.cross.spline, K=10)$delta[1] # compute MSE
+}
+# show plot
+plot(ran2, cv.error2, xlab ="Degrees of freedom with CV error", ylab="cv.error")
+lines(ran2,cv.error2,lwd=2,col="darkgreen")
+title(main="Degrees of freedom with CV error")
+```
+As a result of checking 10 degrees of freedom from 3 to 12 through repeated cross-validation, it can be seen that the selected fit is a spline with **6** degree of freedom.
+
+# Q4. Question 10 of Chapter 7 of the ISLR book. (Page 300).
+
+## This question relates to the College data set.
+
+```{r college}
+# College dataset into coll
+coll <- ISLR::College
+```
+
+## (a) Split the data into a training set and a test set. Using out-of-state tuition as the response and the other variables as the predictors, perform forward stepwise selection on the training set in order to identify a satisfactory model that uses just a subset of the predictors.
+
+```{r training and test}
+# set seed
+set.seed(1)
+# train range
+train= sample(length(coll$Outstate), length(coll$Outstate)/2)
+# set train
+coll.train <- coll[train,]
+# set test
+coll.test <- coll[-train,]
+# perform forward stepwise selection on training
+regfit.fwd = regsubsets(Outstate~., data=coll.train, nvmax=19, method="forward")
+# summary regfit.fwd into reg.summary
+reg.summary = summary(regfit.fwd)
+# find min show the all plots
+which.min(reg.summary$cp)
+which.max(reg.summary$adjr2)
+which.min(reg.summary$bic)
+par(mfrow=c(2,2))
+plot(reg.summary$cp)
+plot(reg.summary$adjr2)
+plot(reg.summary$bic)
+plot(reg.summary$rss)
+# set model (min)
+model1 <- coef(regfit.fwd,6)
+# check fit model names
+names(model1)
+```
+After dividing the data into training sets and test sets, as a result of forming a train with a  forward stepwise selection, the optimal is set to **6** because the minimum of cp is 14, the maximum of adjr2 is 14, and the minimum of bic is 6.
+
+## b. Fit a GAM on the training data, using out-of-state tuition as the response and the features selected in the previous step as the predictors. Plot the results, and explain your findings.
+
+```{r fit gam training}
+# fit gam on the training data
+gam.coll <- gam(Outstate~Private+s(Room.Board,5)+s(Personal,5) +s(Terminal,5)+s(perc.alumni,5)+s(Expend,5)+s(Grad.Rate,5), data = coll.train)
+# show plot the results
+par(mfrow=c(2,2))
+plot(gam.coll, se=T, col="blue")
+```
+As a result of fitting the GAM to the training data using the function selected in the previous step, clear evidence of the nonlinear effect of **Expend** can be seen.
+
+## c. Evaluate the model obtained on the test set, and explain the results obtained.
+
+```{r evaluate model}
+predGam <- predict(gam.coll, coll.test)
+# compute err
+err <- mean((coll.test$Outstate - predGam)^2)
+# compute tss
+tss <- mean((coll.test$Outstate - mean(coll.test$Outstate))^2)
+# compute rss
+rss <- 1 - err / tss
+# show RSS
+rss
+```
+
+As a result of evaluating the model obtained from the test set, **it can be seen that R-square is well generalized to 0.7650887 (76.51 %)**.
+
+## d. For which variables, if any, is there evidence of a non-linear relationship with the response?
+```{r summary non-linear}
+# summary model
+summary(gam.coll)
+```
+
+As a result of summarizing the model, it can be seen that the Expand is significant because the p-value value is very lower than 0.05. On the contrary, Personal, Terminal, per.alumni, Grad.Rate, Room.Board are not significant and there is no evidence of nonlinear effects, so it can be seen that there is a linear effect.  
+Thus, evidence of a non-linear relationship with the response is **Expand**.

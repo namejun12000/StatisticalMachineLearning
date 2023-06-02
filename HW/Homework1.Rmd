@@ -1,0 +1,340 @@
+---
+title: "Homework1"
+author: "Nam Jun Lee"
+date: "09/21/2021"
+output: 
+  pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+library(ISLR)
+library(MASS)
+```
+
+# Q1. This question involves the use of simple linear regression on the Auto data set.
+## a. Use the lm() function to perform a simple linear regression with mpg as the response and horsepower as the predictor. Use the summary() function to print the results. Comment on the output. 
+
+```{r auto}
+# Auto dataset into df
+df <- ISLR::Auto
+# linear model mpg ~ horsepower
+lm.fit <- lm(mpg~horsepower, data = df)
+summary(lm.fit)
+```
+
+### (i) Is there a relationship between the predictor and the response? 
+
+Since the p value is less than 0.05, it means that mpg and horsepower are **statistically significant**.
+
+### (ii) How strong is the relationship between the predictor and the response? 
+The value of $R^2$ indicates that the response mpg is due to **60.59%** predictor horsepower.
+
+### (iii) Is the relationship between the predictor and the response positive or negative? 
+
+Since the coefficients of predictor horsepower is negative, the relationship is also **negative**.
+
+### (iv) What is the predicted mpg associated with a horsepower of 98? What are the associated 95 % confidence and prediction intervals?
+
+```{r interval}
+# prediction interval
+predict(lm.fit, data.frame(horsepower=c(98)), interval = 'prediction')
+# confidence interval
+predict(lm.fit, data.frame(horsepower=c(98)), interval = 'confidence')
+```
+
+## b. Plot the response and the predictor. Use the abline() function to display the least squares regression line.
+
+```{r regression line}
+# plot the model
+plot(Auto$horsepower, Auto$mpg, main = 'Relation between Horsepower & Mpg', 
+     xlab='horsepower', ylab='mpg')
+abline(lm.fit, lwd=2.5, col='red')
+```
+
+## c. Use the plot() function to produce diagnostic plots of the least squares regression fit. Comment on any problems you see with the fit.
+
+```{r diagnostic plot, fig.height=4, fig.width=6}
+# diagnostic plots of the least squares regression
+par(mfrow = c(2,2))
+plot(lm.fit)
+```
+
+The Residuals versus Fitted plot does not follow a normal distribution with constant variance. The Scale-Location plot has several outliers, and the figure of Residuals versus Leverage plot indicates that there are several leverage points.
+
+# Q2. In this exercise you will create some simulated data and will fit a linear regression models to it. Make sure to use set.seed(1) prior to starting part (a) to ensure consistent results.
+
+## a. Using the rnorm() function, create a vector, X, containing 100 observations drawn from a N(0, 1) distribution. This represents a feature, X.
+
+```{r vector X}
+# vector X
+set.seed(1)
+X <- rnorm(100, mean=0, sd=1)
+```
+
+## b. Using the rnorm() function, create a vector, $\epsilon$, containing 100 observations drawn from a N(0, 0.25) distribution i.e. a normal distribution with mean zero and variance 0.25.
+
+```{r vector E}
+# vector $\epsilon$
+E <- rnorm(100, mean=0, sd=sqrt(0.25))
+```
+
+## c. Using x and $\epsilon$, generate a vector y according to the model Y = $-1$ + $0.5X$ + $\epsilon$. What is the length of the vector y? What are the values of $\beta0$, $\beta1$ in this linear model?
+
+```{r model Y}
+# vector Y
+Y <- -1 + 0.5 * X + E
+# length of the vector Y
+length(Y)
+```
+
+Length of the vector Y is **100**. Also $\beta0$ is **-1** and $\beta1$ is **0.5**.
+
+## d. 
+### (i) Create a scatterplot displaying the relationship between x and y. 
+```{r scatterplot}
+# scatterplot model using X and Y
+plot(X,Y, main = 'Scatterplot X and Y')
+```
+
+### (ii) Fit a least squares linear model to predict y using x. 
+```{r predict y using x}
+# linear model using Y and X
+lm.fit1 <- lm(Y~X)
+summary(lm.fit1)
+```
+
+### (iii) Display the least squares line on the scatterplot. Draw the population regression line on the plot, in a different color. Use the legend() command to create an appropriate legend.
+
+```{r scatterplot1}
+plot(X,Y, main='Scatterplot X and Y')
+# least squares line
+abline(lm.fit1, col='blue', lwd=2)
+# population regression line
+abline(-1,0.5,col='red', lwd=2)
+legend('bottomright', c('Least squares lines', 'Population regression line'), 
+       col = c('blue', 'red') ,lty = c(1,1), lwd=2, cex=0.6)
+```
+
+## e. Then fit a separate quadratic regression, i.e. Y = $\beta0$ + $\beta1$X + $\beta2$X2 + $\epsilon$. Consider the training residual sum of squares (RSS) for the linear regression, and also the training RSS for the quadratic regression. Would we expect one to be lower than the other, would we expect them to be the same, or is there not enough information to tell? Justify your answer.
+
+```{r quadratic regression}
+# quadratic regression linear model
+lm.fit2 <- lm(Y~X+I(X^2))
+summary(lm.fit2)
+```
+
+Would we expect one to be lower than the other. Although $R^2$ has increased, it cannot be said that the model fit has increased because the p value of the t-statistics indicates that there is no relationship between Y and $X^2$.
+
+## f. Answer (e) using a test rather than RSS.
+```{r test}
+# test lm.fit and lm.fit2
+anova(lm.fit1, lm.fit2)
+```
+
+Model 1 represents a linear submodel including one predictor, and Model 2 corresponds to a larger quadratic model with two predictors. Model 2 is not better than Model 1, which includes only predictors. This is because p-value associated with the F statistic is greater than 0.05.
+
+## g. Repeat (a)-(f) after modifying the data generation process in such a way that there is less noise in the data. You can do this by decreasing the variance of the normal distribution used to generate the error term in (b). Describe your results.
+
+```{r repeat model}
+# Repeat (a) - (d)
+set.seed(1)
+X2 <- rnorm(100, mean = 0, sd = 1)
+# decreasing the variance of the normal distribution 0.15
+E2 <- rnorm(100, mean = 0, sd = 0.15)
+Y2 <- -1 + 0.5 * X2 + E2
+lm.fit3 <- lm(Y2~X2)
+summary(lm.fit3)
+plot(X2,Y2, main='Scatterplot X2 and Y2')
+abline(lm.fit3,col='blue', lwd=2)
+abline(-1, 0.5, col='red', lwd=2)
+legend('bottomright', legend = c('Least squares line', 'population regression line'), cex=0.6, border='white', col = c('blue', 'red') ,lty = c(1,1), lwd=2)
+```
+
+The standard deviation of the error was change to 0.15. It is a little closer to the least squares model. Also, the RSE value is significantly reduced.
+
+```{r repeat model2}
+# Repeat (e) - (f)
+lm.fit4 <- lm(Y2~X2 + I(X2^2))
+summary(lm.fit4)
+anova(lm.fit3, lm.fit4)
+```
+
+Although $R^2$ has increased, it cannot be said that the model fit has increased because the p value of the t-statistics indicates that there is no relationship between Y and $X^2$.
+Model 2 is not better than Model 1, which includes only predictors, which includes only predictors. This is because p-value associated with the F statistic is greater than 0.05.
+
+# Q3. This problem involves the Boston data set, which we saw in class. We will now try to predict per capita crime rate using the other variables in this data set. In other words, per capita crime rate is the response,and the other variables are the predictors.
+## a. For each predictor, fit a simple linear regression model to predict the response. Describe your results. In which of the models is there a statistically significant association between the predictor and the response? Create some plots to back up your assertions.
+
+```{r boston names}
+# Boston dataset into boston
+boston <- MASS::Boston
+# columns in boston
+names(boston)
+```
+
+```{r zn}
+# model crim~zn
+fit.zn <- lm(crim~zn, data = boston)
+summary(fit.zn)
+plot(boston$zn, boston$crim, main = 'Relation between zn & crim', 
+     xlab='zn',ylab='crim')
+abline(fit.zn, col='red',lwd=2)
+```
+
+```{r indus}
+# model crim~indus
+fit.indus <- lm(crim~indus, data = boston)
+summary(fit.indus)
+plot(boston$indus, boston$crim, main = 'Relation between indus & crim', 
+     xlab='indus',ylab='crim')
+abline(fit.indus, col='red',lwd=2)
+```
+
+```{r chas}
+# model crim~chas
+fit.chas <- lm(crim~chas, data = boston)
+summary(fit.chas)
+plot(boston$chas, boston$crim, main = 'Relation between chas & crim', 
+     xlab='chas',ylab='crim')
+abline(fit.chas, col='blue',lwd=2)
+```
+
+```{r nox}
+# model crim~nox
+fit.nox <- lm(crim~nox, data = boston)
+summary(fit.nox)
+plot(boston$nox, boston$crim, main = 'Relation between nox & crim', 
+     xlab='nox',ylab='crim')
+abline(fit.nox, col='red',lwd=2)
+```
+
+```{r rm}
+# model crim~rm
+fit.rm <- lm(crim~rm, data = boston)
+summary(fit.rm)
+plot(boston$rm, boston$crim, main = 'Relation between rm & crim', 
+     xlab='rm',ylab='crim')
+abline(fit.rm, col='red',lwd=2)
+```
+
+```{r age}
+# model crim~age
+fit.age <- lm(crim~age, data = boston)
+summary(fit.age)
+plot(boston$age, boston$crim, main = 'Relation between age & crim', 
+     xlab='age',ylab='crim')
+abline(fit.age, col='red',lwd=2)
+```
+
+```{r dis}
+# model crim~dis
+fit.dis <- lm(crim~dis, data = boston)
+summary(fit.dis)
+plot(boston$dis, boston$crim, main = 'Relation between dis & crim', 
+     xlab='dis',ylab='crim')
+abline(fit.dis, col='red',lwd=2)
+```
+
+```{r rad}
+# model crim~rad
+fit.rad <- lm(crim~rad, data = boston)
+summary(fit.rad)
+plot(boston$rad, boston$crim, main = 'Relation between rad & crim', 
+     xlab='rad',ylab='crim')
+abline(fit.rad, col='red',lwd=2)
+```
+
+```{r tax}
+# model crim~tax
+fit.tax <- lm(crim~tax, data = boston)
+summary(fit.tax)
+plot(boston$tax, boston$crim, main = 'Relation between tax & crim', 
+     xlab='tax',ylab='crim')
+abline(fit.tax, col='red',lwd=2)
+```
+
+```{r ptratio}
+# model crim~ptratio
+fit.ptratio <- lm(crim~ptratio, data = boston)
+summary(fit.ptratio)
+plot(boston$ptratio, boston$crim, main = 'Relation between ptratio & crim', 
+     xlab='ptratio',ylab='crim')
+abline(fit.ptratio, col='red',lwd=2)
+```
+
+```{r black}
+# model crim~black
+fit.black <- lm(crim~black, data = boston)
+summary(fit.black)
+plot(boston$black, boston$crim, main = 'Relation between black & crim', 
+     xlab='black',ylab='crim')
+abline(fit.black, col='red',lwd=2)
+```
+
+```{r lstat}
+# model crim~lstat
+fit.lstat <- lm(crim~lstat, data = boston)
+summary(fit.lstat)
+plot(boston$lstat, boston$crim, main = 'Relation between lstat & crim', 
+     xlab='lstat',ylab='crim')
+abline(fit.lstat, col='red',lwd=2)
+```
+
+```{r medv}
+# model crim~medv
+fit.medv <- lm(crim~medv, data = boston)
+summary(fit.medv)
+plot(boston$medv, boston$crim, main = 'Relation between medv & crim', 
+     xlab='medv',ylab='crim')
+abline(fit.medv, col='red',lwd=2)
+```
+
+Except for the **chas** predictor, each predictor is statistically significant to the response variable.
+
+## b. Fit a multiple regression model to predict the response using all of the predictors. Describe your results. For which predictors can we reject the null hypothesis H0 : $\beta$j = 0?
+
+```{r all}
+#multiple regression model all predictors
+fit.all <- lm(crim ~ ., data = boston)
+summary(fit.all)
+```
+
+It may reject the null hypothesis for **zn**, **dis**, **rad**, **black**, **medv**. zn and black at the 0.05 level, medv at the 0.01 level, dis and rad at the 0.001 level.
+
+## c. How do your results from (a) compare to your results from (b)? Create a plot displaying the univariate regression coefficients from (a) on the x-axis, and the multiple regression coefficients from (b) on the y-axis. That is, each predictor is displayed as a single point in the plot. Its coefficient in a simple linear regression model is shown on the x-axis, and its coefficient estimate in the multiple linear regression model is shown on the y-axis.
+
+```{r univariate}
+# univariate regression coefficients
+univariate <- vector('numeric',0)
+# except (Intercept)
+univariate <- c(fit.zn$coefficients[2], fit.indus$coefficients[2], 
+                fit.chas$coefficients[2], fit.nox$coefficients[2], 
+                fit.rm$coefficients[2], fit.age$coefficients[2], 
+                fit.dis$coefficients[2], fit.rad$coefficients[2], 
+                fit.tax$coefficients[2], fit.ptratio$coefficients[2], 
+                fit.black$coefficients[2], fit.lstat$coefficients[2], 
+                fit.medv$coefficients[2])
+univariate
+```
+
+```{r multiple}
+# multiple regression cofficients
+multiple <- vector('numeric',0)
+# except (Intercept)
+multiple <- c(fit.all$coefficients[-1])
+multiple
+```
+
+```{r plot univ and multi}
+# univariate regression model is shown on the x-axis, multiple regression model is shown on the y-axis
+plot(univariate, multiple, 
+     main = 'Relation between \nUnivariate and Multiple Regression Coefficients', 
+     xlab = 'Univariate Regression Coefficients', 
+     ylab = 'Multiple Regression Coefficients', 
+     col = 'orange', pch = 10, cex = 1.2, fg = 'green', cex.main=1)
+```
+
+The **nox coefficient** is below -10 in the univariate regression model and above 30 in the multiple regression model, which is very far from other predictors.
+
+There is a difference between a univariate regression coefficient and a multiple regression coefficient. This difference shows that the slope term of a univariate regression ignores other predictors and shows the average effect of increasing predictors, and the slope term of multiple regression holds other predictors and shows the average of increasing predictors.

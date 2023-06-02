@@ -1,0 +1,501 @@
+---
+title: "Final Project"
+subtitle: "Wine Quality"
+author: "Nam Jun Lee"
+date: '12/10/2021'
+output: 
+  pdf_document:
+    number_sections: true
+    toc: true
+    toc_depth: 2
+---
+
+# Dataset Information & Goal
+
+The data set I chose is red wine quality. This dataset is from https://archive.ics.uci.edu/ml/index.php, which has **1599** instances and a total of **12** objects.  
+1. Fixed acidity  
+2. Volatile acidity  
+3. Citric acid  
+4. Residual sugar  
+5. Chloride  
+6. Free Sulfur dioxide  
+7. Total sulfur dioxide  
+8. Density  
+9. pH  
+10. Sulphates  
+11. Alcohol  
+12. Quality (0-10 points)  
+  
+Check the individual objects, I decided to focus on statistically evaluating wine quality by classifying it into two types, and we think **binary classification analysis** is suitable because my goal is to test models that distinguish quality and bad by creating dummy variables rather than session analysis that predicts wine quality out of 0 to 10. To this end, I plan to evaluate which models perform well using **Logistic Regression analysis**, **LDA**, **QDA**, and **KNN**.  
+
+# Data Collection
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+library(corrplot)
+library(ggplot2)
+library(dplyr)
+library(ggthemes)
+library(gridExtra)
+library(ROCR)
+library(class)
+library(MASS)
+library(car)
+```
+
+## Load the dataset 
+```{r import cvs}
+# import csv file
+rw <- read.csv("winequality-red.csv", stringsAsFactors = F, sep = ";")
+# head for red wine data
+head(rw)
+```
+
+Load the red wine data needed for data analysis and obtain rows for the first six to see what is there.
+
+## Data information & Summary
+```{r check}
+# summart red wine dataset
+summary(rw)
+# convert the specified value into a red wine dataset
+str(rw)
+```
+
+This dataset has a total of 1599 data, 12 variables, and contains data frame properties. Just quality variable is integer variable.  
+As a result of checking the summary, total.sulfur.dioxide, residual.sugar, and free.sulfur.dioxide, has see that the maximum is very high between the median. Through this, that there is an outlier.
+
+# Data Preprocessing & EDA 
+```{r find missing value}
+# find null
+colSums(is.na(rw))
+```
+After checking the missing values in the data, it does not have any missing value in all variables.
+
+## Correlation of all data
+```{r corr}
+# correlation relationship plot
+corr <- cor(rw)
+corrplot(corr, method="square",
+         tl.co = 'black',
+         tl.srt=70, cl.pos='n', 
+         order = 'FPC', type='lower')
+```
+Through the correlation plot, it can be seen that alcohol has a high positive correlation with quality and volatile acidity has a high negative correlation with quality. In addition, it can be seen that density and citric acid have a moderate positive correlation with quality. Through this, it can be seen that **alcohol is the most related to the quality of wine among all variables**.
+
+## Visualization
+```{r quality}
+# count the each quality 
+group_quality <- rw %>% 
+  group_by(quality) %>% 
+  dplyr::summarise(count=n()) %>% 
+  arrange(desc(count))
+# show the count of quality plot
+ggplot(group_quality, aes(x= reorder(quality, count),y=count,fill=quality)) +
+   coord_flip() +
+  geom_bar(stat='identity', position ='dodge') +
+  labs(title = 'quality') +
+  geom_label(aes(label=count), size=3.4) +
+  xlab('Quality') +
+  ylab('Count') +
+  theme_stata() +
+  theme(plot.title = element_text(family='serif',
+                                  color = 'darkblue',
+                                  face='bold')) +
+  theme(legend.title = element_text(size=9, face='bold')) +
+  theme(legend.text = element_text(size=7.5))
+```
+
+As a result of checking the quality, quality 3 for the smallest proportion, quality 5 for the largest proportion, and next quality 6 for the largest proportion. Based on this, I think it is better to cut bad wine into good wine based on 6.
+
+```{r density and sugar plot}
+# show the density vs sugar plot
+ggplot(rw, aes(x=density, y=residual.sugar)) +
+  xlab("Density") +
+  ylab("Sugar") +
+  geom_point(alpha=0.1) +
+  geom_smooth(method='lm',formula=y~x) +
+  theme_stata() +
+  ggtitle("Density vs Sugar") 
+```
+From the scatter plot, it can be seen that there is a weak positive correlation between sugar and density.
+
+```{r alcohol and density plot}
+# show the alcohol vs density plot
+ggplot(rw, aes(x=alcohol,y=density)) +
+  geom_point(alpha=0.1) +
+  theme_stata() +
+  geom_smooth(method='lm', formula=y~x) +
+  ggtitle("Alcohol vs Density") +
+  xlab("Alcohol") +
+  ylab("Density") 
+```
+From the scatter plot, it can be seen that there is a negative correlation between alcohol and density.
+
+```{r alcohol and quality plot}
+# show the alcohol vs quality plot
+ggplot(rw, aes(x=factor(quality),y=alcohol)) +
+  geom_violin(color='darkgreen', lwd=1.0) +
+  ggtitle("Quality vs Alcohol") +
+  geom_jitter(color ='gray', alpha=0.3) +
+  xlab("Quality") +
+  ylab("Alcohol") + 
+  theme_stata()
+```
+When viewed from the violin plot and the scatter plot above, it can be seen that alcohol and quality are somewhat related, and the two variables are nonlinear.
+
+## Dummy Variable 
+```{r dummy}
+# create dummy variable based on 6 (quality)
+rw$rating <- ifelse(as.numeric(rw$quality) > 6, 1, 0)
+red.wine = rw
+# change to factor data type
+red.wine$rating <- as.factor(rw$rating)
+# representation of data with variable name and the frequncy
+table(red.wine$rating)
+# show every column in a data frame
+glimpse(red.wine)
+```
+The rating variable was created, added to the data frame, and converted into factor data type.
+
+## Visualization after add dummy variable
+```{r rating plot1}
+# count each rating (bad, good)
+group_rating <- red.wine %>% 
+  group_by(rating) %>% 
+  dplyr::summarise(count=n()) %>% 
+  arrange(desc(count))
+# show count each rating plot
+ggplot(group_rating, aes(x= reorder(rating, count), y=count, fill=rating)) + 
+  geom_bar(stat='identity', position='dodge') + 
+  ggtitle('Rating') +
+  xlab('Rating') +
+  ylab('Count') + 
+  theme(plot.title = element_text(family='serif',color = 'black',face='bold')) +
+  theme(legend.title = element_text(size=9, face='bold')) +
+  theme(legend.text = element_text(size=7.5)) +
+  geom_label(aes(label=count), size=3.4) 
+```
+It can be seen that there are more high-quality red wines than poor-quality red wines.
+
+```{r rating plot2, fig.height=5, fig.width=8}
+# alcohol vs density scatter plot each rating
+ad <- ggplot(red.wine, aes(alcohol, density)) +
+  geom_point(aes(color = rating)) +
+  theme_stata() +
+  scale_color_stata() +
+  labs(title = "Alcohol VS Desity")
+# alcohol vs density plot each rating
+ar <- ggplot(red.wine, aes(alcohol, fill = rating)) +
+  geom_density(alpha=0.7) +
+  theme_stata() +
+  scale_color_stata() +
+  labs(title="Alcohol density with rating")
+# Show two graphs on one page
+grid.arrange(ad,ar,ncol=2)
+```
+
+The first graph shows that alcohol density has a **negative correlation regardless of quality**.  
+The second graph shows that the two variables have a **nonlinear relationship** and that the higher the alcohol concentration, the better the quality of wine.
+
+```{r rating plot3}
+# sulphates density plot each rating
+ggplot(red.wine, aes(sulphates, fill=rating)) + 
+  ggtitle("Sulphates density with rating") +
+  geom_density(alpha=0.7) 
+
+```
+When checking the density of sulphates, it can be seen that wine with low quality belongs to the lower density of sulfate than high quality red wine.
+
+# Split Data Set
+```{r test and train}
+# set test and train use to predictions
+train <- 1:(dim(red.wine)[1]/2)
+test <- (dim(red.wine)[1]/2+1):dim(red.wine)[1]
+train_wine <- red.wine[train,]
+test_wine <- red.wine[test,]
+rating_wine <- red.wine$rating[test]
+```
+Data was divided prior to the creation of a learning model.
+
+# Create Model & Model Verification
+
+## Logistic Regression
+```{r logistic regression}
+set.seed(1)
+# fit logistic model with all variables
+glm.fit <- glm(rating~.-quality, data=red.wine, family=binomial, subset = train)
+# summary logiistic model
+summary(glm.fit)
+```
+
+This summary shows that the **total.sulfur.dioxide**, **sulphates**, and **alcohol** p-value are 0.001, rejecting the null hypothesis, showing that the **free.sulfur.dioxide** p-value is 0.05, and that the remaining variables cannot reject the null hypothesis.
+
+```{r check glm}
+# test the anova
+anova(glm.fit, test="Chisq")
+# check multicollinearity
+vif(glm.fit)
+```
+
+The development table was analyzed using the anova() function. Here, depending on how large the difference between null development and residual development is, how far it is from the null model. The null model refers to a state in which there is only an intercept value without any input variables. It can be seen that all variables are suitable except for residual.sugar and free.sulfur.dioxide. In addition, when checking multicollinearity, it can be seen that there is no problem with multicollinearity because all variables are less than 10. Through this, it can be seen that all variables can be used to form a data model.
+
+```{r matrix logistic}
+# prediction for all values (logistic)
+glm.pred <- predict(glm.fit, test_wine, type='response')
+# create all values '0' 
+pred_glm <- rep(0, length(glm.pred))
+# all of the elements for which predicted prob of a quality increase exceeds 0.5 
+pred_glm[glm.pred > 0.5] = 1
+# confusion matrix
+table(pred_glm,rating_wine)
+# find accuracy
+mean(pred_glm == rating_wine)
+# find error rate
+mean(pred_glm != rating_wine)
+# find recall
+recall <- 47 / (47 + 25)
+# find precision
+precision <- 47 / (47 + 89)
+# find f1 score
+f1.score <- 2 * ((precision * recall) / (precision + recall))
+f1.score
+```
+
+Percentage of current logistic predictions:  
+Accuracy: **85.73** %  
+Error rate: **14.27** %  
+F-1 Score: **45.19** %  
+
+## LDA
+```{r lda}
+set.seed(1)
+# fit LDA
+lda.fit <- lda(rating~.-quality, data = red.wine, subset = train)
+# predictions data (LDA)
+lda.pred <- predict(lda.fit, test_wine)
+# contains LDA predictions about the movement of the quality
+lda.class = lda.pred$class
+# confusing matrix
+table(lda.class, rating_wine)
+# find accuracy
+mean(lda.class == rating_wine)
+# find error rate
+mean(lda.class != rating_wine)
+# find recall
+recall <- 69 / (69 + 53)
+# find precision
+precision <- 69 / (69 + 67)
+# find f1 score
+f1.score <- 2 * ((precision * recall) / (precision + recall))
+f1.score
+```
+
+Percentage of LDA predictions:  
+Accuracy: **84.98** %  
+Error rate: **15.02** %  
+F-1 Score: **53.49** %  
+
+## QDA
+```{r qda}
+set.seed(1)
+# fit QDA
+qda.fit <- qda(rating~.-quality, data = red.wine, subset = train)
+# predictions data (QDA)
+qda.pred <- predict(qda.fit, test_wine)
+# contains QDA predictions about the movement of the quality
+qda.class = qda.pred$class
+# confusing matrix
+table(qda.class, rating_wine)
+# find accuracy
+mean(qda.class == rating_wine)
+# find error rate
+mean(qda.class != rating_wine)
+# find recall
+recall <- 86 / (86 + 114)
+# find precision
+precision <- 86 / (86 + 50)
+# find f1 score
+f1.score <- 2 * ((precision * recall) / (precision + recall))
+f1.score
+```
+
+Percentage of QDA predictions:  
+Accuracy: **79.47** %  
+Error rate: **20.53** %  
+F-1 Score: **51.19** %  
+
+## KNN
+
+```{r knn wine}
+# create train data (KNN)
+train_x_wine <- cbind(red.wine$fixed.acidity, 
+                      red.wine$volatile.acidity,
+                      red.wine$citric.acid,
+                      red.wine$residual.sugar,
+                      red.wine$chlorides,
+                      red.wine$free.sulfur.dioxide,  
+                      red.wine$pH,
+                      red.wine$density,
+                      red.wine$sulphates,
+                      red.wine$alcohol,
+                      red.wine$total.sulfur.dioxide)[train,]
+# create test data (KNN)
+test_x_wine <- cbind(red.wine$fixed.acidity,
+                red.wine$volatile.acidity,
+                red.wine$citric.acid,red.wine$residual.sugar,
+                red.wine$chlorides,
+                red.wine$free.sulfur.dioxide,
+                red.wine$pH,
+                red.wine$density,
+                red.wine$sulphates,red.wine$alcohol,
+                red.wine$total.sulfur.dioxide)[test,]
+# vector containing the class labels for the training observations
+train_rating_test <- rating_wine[train]
+```
+
+### K = 1
+```{r knn1}
+set.seed(1)
+# predictions data in the KNN 1
+knn.1 = knn(train_x_wine, test_x_wine, rating_wine, k = 1)
+# confusing matrix
+table(knn.1, train_rating_test)
+# find accuracy
+mean(knn.1 == train_rating_test)
+# find error rate
+mean(knn.1 != train_rating_test)
+```
+
+Percentage of KNN [k = 1] predictions:  
+Accuracy: **73.72** %  
+Error rate: **26.28** %  
+
+### K = 5
+```{r knn5}
+set.seed(1)
+# predictions data in the KNN 5
+knn.5 = knn(train_x_wine, test_x_wine, rating_wine, k = 5)
+# confusing matrix
+table(knn.5, train_rating_test)
+# find accuracy
+mean(knn.5 == train_rating_test)
+# find error rate
+mean(knn.5 != train_rating_test)
+```
+
+Percentage of KNN [k = 5] predictions:  
+Accuracy: **80.98** %  
+Error rate: **19.02** %  
+
+### K = 7
+```{r knn7}
+set.seed(1)
+# predictions data in the KNN 7
+knn.7 = knn(train_x_wine, test_x_wine, rating_wine, k = 7)
+# confusing matrix
+table(knn.7, train_rating_test)
+# find accuracy
+mean(knn.7 == train_rating_test)
+# find error rate
+mean(knn.7 != train_rating_test)
+```
+
+Percentage of KNN [k = 7] predictions:  
+Accuracy: **81.48** %  
+Error rate: **18.52** %  
+
+### K = 9
+```{r knn9}
+set.seed(1)
+# predictions data in the KNN 9
+knn.9 = knn(train_x_wine, test_x_wine, rating_wine, k = 9)
+# confusing matrix
+table(knn.9, train_rating_test)
+# find accuracy
+mean(knn.9 == train_rating_test)
+# find error rate
+mean(knn.9 != train_rating_test)
+```
+
+Percentage of KNN [k = 9] predictions:  
+Accuracy: **82.10** %  
+Error rate: **17.90** % 
+
+# Compare Model 
+
+## LDA ROC Curve
+```{r LDA ROC}
+# the classification rate is calculated by comparing the calculated probability p with the actual test data; LDA
+pred.LDA <- prediction(lda.pred$posterior[,2],rating_wine)
+# calculate the sensitivity and 1-specificity to draw the ROC curve
+pefLDA <- performance(pred.LDA, measure = "tpr", x.measure = "fpr")
+# show LDA ROC plot
+plot(pefLDA, col='red', main='LDA ROC', lwd=2, lty=1)
+abline(0,1,lty=3)
+# AUC
+aic <- performance(pred.LDA, measure = 'auc')
+aic <- aic@y.values[[1]]
+aic
+```
+LDA Model's AUC: **0.8591851**
+
+## QDA ROC Curve
+```{r QDA ROC}
+# the classification rate is calculated by comparing the calculated probability p with the actual test data; QDA
+pred.QDA <- prediction(qda.pred$posterior[,2],rating_wine)
+# calculate the sensitivity and 1-specificity to draw the ROC curve
+pefQDA <- performance(pred.QDA, measure = "tpr", x.measure = "fpr")
+# show QDA ROC plot
+plot(pefQDA, main='QDA ROC', col='blue', lty=1, lwd=2)
+abline(0,1, lty=3)
+# AUC 
+auc.qda <- performance(pred.QDA, measure = 'auc')
+auc.qda <- auc.qda@y.values[[1]]
+auc.qda
+```
+QDA Model's AUC: **0.8081803**
+
+## Logistic Regression ROC Curve
+```{r logistic regression ROC}
+# the classification rate is calculated by comparing the calculated probability p with the actual test data; Logistic
+predLR <- prediction(glm.pred,rating_wine)
+# calculate the sensitivity and 1-specificity to draw the ROC curve
+pefLR <- performance(predLR, measure = "tpr", x.measure = "fpr")
+# show Logistic ROC plot
+plot(pefLR, main='Logistic Regression ROC', col='darkgreen', lty=1, lwd=2)
+abline(0,1,lty=3)
+# AUC 
+auc <- performance(predLR, measure = 'auc')
+auc <- auc@y.values[[1]]
+auc
+
+```
+Logistic Regression Model's AUC: **0.8503571**  
+  
+As a result, each accuracy of the prediction is as follows.  
+Logistic Regression: **85.73%**  
+LDA: **84.98% **  
+QDA: **79.47% **  
+KNN (k=1): **73.72 %**  
+KNN (k=5): **80.98 %**  
+KNN (k=7): **81.48 %**  
+KNN (k=9): **82.10 %**  
+  
+As a result of checking with accuracy, it can be seen that all models have not bad accuracy. Among them, the accuracy of logistic regression analysis and lda analysis is judged to be very accurate.  
+  
+Accuracy:
+$$Logistic > LDA > KNN (k=9) > KNN (k=7) > KNN (k=5) > QDA > KNN (k=1)$$
+**When checking the KNN model, it can be seen that as the value of K increases, the accuracy increases and the error rate improves**. The KNN model has different results as the value of k increases and excludes it from comparing the most appropriate models to predict through simple distances between observations rather than focusing on the importance of variables.  
+  
+Therefore, the most suitable models can be considered are logistic regression models and LDA models. Although the logistic regression model has a slightly higher accuracy, it is not the most suitable model just because it is highly accurate, so we checked using f1 score because the data is enhanced.  
+Logistic regression model F-1 score: **0.4519231**  
+LDA F-1 score: **0.5348837**  
+Indicating that LDA is a more suitable model.  
+  
+To compare more reliably, the ROC curve and AUC were used as above. (LDA, QDA, Logistic Regression)  
+For a model with a perfect ROC curve graph, TPR is 1 and FPR is 0 for all data points. It also shows that the larger the value of AUC, the better the performance of the model.  
+As a result, considering that the AUC value of QDA is smaller than the other two models and that the QDA ROC curve TPR is not closer to 1 and FPR is not closer to 0 than the two models, QDA is not an optimal model. In addition, the ROC curve of LDA and ROC curve of the logistic regression model look similar, but when I look at the AUC value, I can see that the **LDA model is more suitable**, given that the *AUC of the LDA is 0.8591851* and the *AUC of the logistic regression model is 0.8503571*.
+
+# Conclusion
+
+* Individuals of red wine quality were identified and classified into two types (bad, good) to statistically evaluate wine quality, **which showed 84.98% accuracy of the LDA model and 85.92% better and more suitable for the AUC value than other models.** As a result, the **LDA model is the most suitable model**.  
+* Additionally, in the red wine quality dataset, there is no problem with the multicollinearity line of all variables because the multicollinearity line of all variables is less than 10, and alcohol has the strongest correlation in wine quality. 

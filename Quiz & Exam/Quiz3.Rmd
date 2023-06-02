@@ -1,0 +1,247 @@
+---
+title: "Quiz3"
+author: "Nam Jun Lee"
+date: '11/04/2021'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(class)
+testX <- read.csv('xtestQ3-1.csv')
+trainX <- read.csv('xtrainQ3-1.csv')
+```
+
+# Q1 This problem is regarding writing your own code for K nearest neighbor classification.  
+
+##a. Import the training predictors (x), training response (y) and testing (x) data sets provided with this quiz. Merge the testing (x) and training (x) row-wise (using rbind()). The training (x) is a 100 × 4 data frame, the testing (x) is a 50 × 4 data frame, thus the combined data should be 150 × 4 where the firs 50 rows are of the testing data.
+
+```{r merge}
+# merge testing (x) and training(x) row-wise
+df <- rbind(testX, trainX)
+# display df first 6 row
+head(df)
+```
+
+## b. Compute a matrix of distances amongst all observations of the combined data set of part (a). (use the function dist()).
+
+```{r matrix}
+# matrix of distances amongst combined data set
+dst <- as.matrix(dist(df, method="euclidean"))
+# display dst 
+head(dst)
+```
+
+## c. For each testing data observation find the K=15 nearest training observation. Recall that in the distance matrix of part (b), the first 50 observations (rows) are testing and the remaining are training. To find the K observations with the least distances, use the following custom function knearest(). This will require you to setup a 50 × K matrix (say near.neigh), where each row represents each testing observation and each column has the corresponding K nearest neigbors. This will require a for loop over the number of testing observations.
+
+```{r knear}
+# split test and train
+# first 50 observaions are testing
+test <- dst[1:50,]
+# remaining are training
+train <- dst[51:150,]
+# function knearest (find smallest among all values of x index)
+knearest=function(x,k=15){
+n=length(x)
+ind=c(1:n)
+temp=cbind(ind,x)
+temp.order=temp[order(x),]
+knearest=temp.order[1:k,1]
+return(knearest)
+}
+# find each testing observation K nearest neigbors (15)
+a1 = knearest(test[1,])
+a2 = knearest(test[2,])
+a3 = knearest(test[3,])
+a4 = knearest(test[4,])
+a5 = knearest(test[5,])
+a6 = knearest(test[6,])
+a7 = knearest(test[7,])
+a8 = knearest(test[8,])
+a9 = knearest(test[9,])
+a10 = knearest(test[10,])
+a11 = knearest(test[11,])
+a12 = knearest(test[12,])
+a13 = knearest(test[13,])
+a14 = knearest(test[14,])
+a15 = knearest(test[15,])
+a16 = knearest(test[16,])
+a17 = knearest(test[17,])
+a18 = knearest(test[18,])
+a19 = knearest(test[19,])
+a20 = knearest(test[20,])
+a21 = knearest(test[21,])
+a22 = knearest(test[22,])
+a23 = knearest(test[23,])
+a24 = knearest(test[24,])
+a25 = knearest(test[25,])
+a26 = knearest(test[26,])
+a27 = knearest(test[27,])
+a28 = knearest(test[28,])
+a29 = knearest(test[29,])
+a30 = knearest(test[30,])
+a31 = knearest(test[31,])
+a32 = knearest(test[32,])
+a33 = knearest(test[33,])
+a34 = knearest(test[34,])
+a35 = knearest(test[35,])
+a36 = knearest(test[36,])
+a37 = knearest(test[37,])
+a38 = knearest(test[38,])
+a39 = knearest(test[39,])
+a40 = knearest(test[40,])
+a41 = knearest(test[41,])
+a42 = knearest(test[42,])
+a43 = knearest(test[43,])
+a44 = knearest(test[44,])
+a45 = knearest(test[45,])
+a46 = knearest(test[46,])
+a47 = knearest(test[47,])
+a48 = knearest(test[48,])
+a49 = knearest(test[49,])
+a50 = knearest(test[50,])
+# merge all test observations in near.neigh
+near.neigh = rbind(a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,
+                   a11,a12,a13,a14,a15,a16,a17,a18,a19,a20,a21,a22,
+                   a23,a24,a25,a26,a27,a28,a29,a30,a31,a32,a33,a34,a35,
+                   a36,a37,a38,a39,a40,a41,a42,a43,a44,a45,a46,a47,a48,a49,a50)
+# display near.neigh
+near.neigh
+```
+
+## d. Compute the posterior probability for each testing observation. For each testing observation, recover the training class corresponding to its K nearest neighbors and compute the mean. 
+
+```{r mean}
+# all training class corresponding to Knn and compute the mean
+pr = c()
+pr[1] = mean(train[near.neigh[1,]])
+pr[2] = mean(train[near.neigh[2,]])
+pr[3] = mean(train[near.neigh[3,]])
+pr[4] = mean(train[near.neigh[4,]])
+pr[5] = mean(train[near.neigh[5,]])
+pr[6] = mean(train[near.neigh[6,]])
+pr[7] = mean(train[near.neigh[7,]])
+pr[8] = mean(train[near.neigh[8,]])
+pr[9] = mean(train[near.neigh[9,]])
+pr[10] = mean(train[near.neigh[10,]])
+pr[11] = mean(train[near.neigh[11,]])
+pr[12] = mean(train[near.neigh[12,]])
+pr[13] = mean(train[near.neigh[13,]])
+pr[14] = mean(train[near.neigh[14,]])
+pr[15] = mean(train[near.neigh[15,]])
+pr[16] = mean(train[near.neigh[16,]])
+pr[17] = mean(train[near.neigh[17,]])
+pr[18] = mean(train[near.neigh[18,]])
+pr[19] = mean(train[near.neigh[19,]])
+pr[20] = mean(train[near.neigh[20,]])
+pr[21] = mean(train[near.neigh[21,]])
+pr[22] = mean(train[near.neigh[22,]])
+pr[23] = mean(train[near.neigh[23,]])
+pr[24] = mean(train[near.neigh[24,]])
+pr[25] = mean(train[near.neigh[25,]])
+pr[26] = mean(train[near.neigh[26,]])
+pr[27] = mean(train[near.neigh[27,]])
+pr[28] = mean(train[near.neigh[28,]])
+pr[29] = mean(train[near.neigh[29,]])
+pr[30] = mean(train[near.neigh[30,]])
+pr[31] = mean(train[near.neigh[31,]])
+pr[32] = mean(train[near.neigh[32,]])
+pr[33] = mean(train[near.neigh[33,]])
+pr[34] = mean(train[near.neigh[34,]])
+pr[35] = mean(train[near.neigh[35,]])
+pr[36] = mean(train[near.neigh[36,]])
+pr[37] = mean(train[near.neigh[37,]])
+pr[38] = mean(train[near.neigh[38,]])
+pr[39] = mean(train[near.neigh[39,]])
+pr[40] = mean(train[near.neigh[40,]])
+pr[41] = mean(train[near.neigh[41,]])
+pr[42] = mean(train[near.neigh[42,]])
+pr[43] = mean(train[near.neigh[43,]])
+pr[44] = mean(train[near.neigh[44,]])
+pr[45] = mean(train[near.neigh[45,]])
+pr[46] = mean(train[near.neigh[46,]])
+pr[47] = mean(train[near.neigh[47,]])
+pr[48] = mean(train[near.neigh[48,]])
+pr[49] = mean(train[near.neigh[49,]])
+pr[50] = mean(train[near.neigh[50,]])
+# merge all posterior for testing observation in pr
+pr = rbind(pr[1],pr[2],pr[3],pr[4],pr[5],pr[6],pr[7],pr[8],pr[9],pr[10],
+           pr[11],pr[12],pr[13],pr[14],pr[15],pr[16],pr[17],pr[18],pr[19],
+           pr[20],pr[21],pr[22],pr[23],pr[24],pr[25],pr[26],pr[27],pr[28],
+           pr[29],pr[30],pr[31],pr[32],pr[33],pr[34],pr[35],pr[36],pr[37],
+           pr[38],pr[39],pr[40],pr[41],pr[42],pr[43],pr[44],pr[45],pr[46],
+           pr[47],pr[48],pr[49],pr[50])
+# display pr
+pr
+```
+
+## e. Create a prediction variable pred with values 0, 1. Compare this prediction vector to the ytest variable to compute the total error in your classification.
+```{r compare}
+# create prediction variable
+pred <- rep(0, length(pr))
+pred[pr > 2.5] <- 1
+# display pred
+pred
+# create ytest variable
+ytest = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
+# display ytest table
+table(ytest)
+```
+
+```{r knn 3}
+# K = 3
+# predictions data in the knn
+pred.knn = knn(test, train, pred, k = 3)
+# confusing matrix
+table(pred.knn, ytest)
+# fraction of days for which the prediction was correct
+mean(pred.knn == ytest)
+# training error rate
+mean(pred.knn != ytest)
+```
+
+Percentage of current KNN [k = 3] predictions  
+Training correct prediction:  
+$\frac{(11 + 26)}{(11+24+39+26)} = 0.37$;  **37.00 %**  
+Training error rate:  
+$1 - 0.37 = 0.63$;  **63.00 % **
+
+```{r knn 7}
+# K = 7
+# predictions data in the knn
+pred.knn = knn(test, train, pred, k = 7)
+# confusing matrix
+table(pred.knn, ytest)
+# fraction of days for which the prediction was correct
+mean(pred.knn == ytest)
+# training error rate
+mean(pred.knn != ytest)
+```
+
+Percentage of current KNN [k = 7] predictions  
+Training correct prediction:  
+$\frac{(4 + 19)}{(4+31+46+19)} = 0.23$;  **23.00 %**  
+Training error rate:  
+$1 - 0.23 = 0.77$;  **77.00 % **  
+
+```{r knn 10}
+# K = 10
+# predictions data in the knn
+pred.knn = knn(test, train, pred, k = 10)
+# confusing matrix
+table(pred.knn, ytest)
+# fraction of days for which the prediction was correct
+mean(pred.knn == ytest)
+# training error rate
+mean(pred.knn != ytest)
+```
+
+Percentage of current KNN [k = 10] predictions  
+Training correct prediction:  
+$\frac{(6 + 21)}{(6+29+44+21)} = 0.27$;  **27.00 %**  
+Training error rate:  
+$1 - 0.27 = 0.73$;  **73.00 % **  
+  
+**Since the test error rate is high, this classifier is judged to be not suitable for the model**.

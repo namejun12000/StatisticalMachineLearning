@@ -1,0 +1,209 @@
+---
+title: "Quiz2"
+author: "Nam Jun Lee"
+date: '10/11/2021'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+library(glmnet)
+library(caret)
+```
+
+## a. Simulate a data set as follows.
+
+```{r simulate data}
+# dataset
+set.seed(1)
+n = 300; p = 200; s = 5 
+x = matrix(rnorm(n*p), n, p)
+b = c(rep(1,s), rep(0,p-s))
+y = 1 + x %*% b + rnorm(n)
+# create data frame with all variables
+dat = data.frame(y,x)
+```
+
+## b. Define a grid L = {0,...,2} of 100 numbers between 0 and 2,this grid shall serve as potential values for the regularizer $\lambda$.
+
+```{r grid}
+# grid 100 numbers between 0 and 2
+grid_lam = seq(0, 2, length.out = 100)
+grid_lam
+# show grid L plot
+plot(grid_lam, main = 'Grid L', xlab = 'Index', ylab = 'L')
+```
+
+## c. Use the function glmnet() to obtain lasso estimates for each value in the grid that you define in part (b). Using the function coef(), extract the estimated coefficient vector when $\lambda$ = L[10], i.e., the {10}}^th value in the grid L.
+
+```{r lasso}
+# obtain lasso estimates for each value grid_lam
+las = glmnet(x,y, lambda = grid_lam, alpha = 1)
+# extract the estimated coef vector 10th value
+v10 = coef(las, s=10)
+# L[10] value
+as.numeric(v10)
+```
+
+## d. For each value of $\lambda$ in the grid L of part (b), compute the mean squared error on the entire dataset.(Use a for() loop for this purpose). This will provide a vector of 100 values of mse, one for each value of $\lambda$. Plot $\lambda$ vs mse. What do you observe?
+
+```{r mse in grid}
+mse= c()
+# repeat 1 to 100 times
+for (i in 1:100) {
+  # compute mean squared error
+  mse[i] = sum(coef(las)[,i]^2)
+}
+# show mse each value of grid L
+mse
+#  plot grid L vs mse
+plot(grid_lam, mse, main = 'Lambda vs MSE', xlab='Lambda', ylab='MSE')
+```
+Plot $\lambda$ vs MSE shows that weak flexibility.
+
+## e. Using a for() loop. compute the cross validation error, for each value of $\lambda$ in the grid L, under a k= 5 fold cross validation setup. (you will need to repeatedly divide the data into testing and training, this will require another for() loop).
+
+```{r cross validation}
+# fold cross setup
+k = 5
+n = 100
+ncv = ceiling(n/k)
+cv = rep(1:k, ncv)
+cv.random = sample(cv,n,replace=F)
+
+# cross validation
+MSE = c(); cv.err = c()
+for (i in 1:100) {
+  for (j in 1:k) {
+    # train the first model on all (first fold)
+    train = dat[cv.random!=j,]
+    res = train$y
+    des = train[,(2:(i+1))]
+    m = lm(res~as.matrix(des))
+    coef = coef(m)
+    # MSE on test data (first fold)
+    test = dat[cv.random==j,]
+    resp_val=test$y
+    # recall predicted values
+    fit_val = as.matrix(cbind(1,test[,(2:(i+1))])) %*% coef
+    MSE[j] = mean((resp_val-fit_val)^2)
+  }
+  # calculate cross validation error each values
+  cv.err[i] = mean(MSE)
+}
+# show cross validation error
+cross_validation_error <- cv.err
+cross_validation_error
+```
+
+## f. Compile all your code into a custom function with input arguments x, y, k and a grid L. This function should output the following results.
+
+```{r custom}
+# custom
+set.seed(1)
+n = 100; p = 10; 
+x = rnorm(n)
+y = 1 + x + x^2 + x^3 + x^4 + rnorm(n)
+# create a matrix with all predictor variable
+z = matrix(0,n,p)
+for(j in 1:p){z[,j]=x^j}
+# create data frame with all variables
+df = data.frame(y,z)
+k = 10
+# grid L
+grid = seq(1,5,length.out = 100)
+
+```
+
+### (i) the best fit model with a k-fold cross validation.
+
+```{r k-fold}
+#specify the cross-validation method
+cvm <- trainControl(method = "cv", number = k)
+
+#fit a regression model and use k-fold CV to evaluate performance
+model <- train(y ~ ., data = df, method = "lm", trControl = cvm)
+
+#view summary of k-fold CV               
+summary(model)
+
+# Compare best fit model in k-fold cross validation
+best_fit = model$resample
+best_fit
+```
+The smaller the RMSE prediction error value, the more accurate the model is. According to summary of model(1 to 10). Lowest RMSE is 0.8202275 in Fold06. Therefore, **sixth** is best fit model.
+
+### (ii) the vector of cross validation errors (one for each value of $\lambda$). (iii) the grid L used for cross validation.
+
+```{r vector of cv}
+# obtain lasso estimates for each value grid
+l.mod = glmnet(z,y, lambda = grid, alpha = 1)
+mse= c()
+# repeat 1 to 100 times
+for (i in 1:100) {
+  # compute mean squared error
+  mse[i] = sum(coef(l.mod)[,i]^2)
+}
+# show mse each value of grid L
+mse
+```
+
+```{r perform cross validation, fig.height=6, fig.width=7}
+set.seed(1)
+fit.las = cv.glmnet(x=z,y=y,lambda=l.mod$lambda,aplha=1)
+# plot cross validation
+plot(fit.las, main='Cross Validation Error')
+# best lambda 
+bestlam = fit.las$lambda.min
+# Predction lasso model
+lasso_pred = predict(l.mod, s=bestlam, newx=z)
+# MSE 
+mean((lasso_pred - y)^2)
+```
+
+### (iv) the value of lambda at which the best fit model is obtained.
+
+```{r lasso coefficients}
+lasso_coef = predict(fit.las, type = 'coefficients', s=bestlam)[1:11,]
+# Coefficient estimates
+lasso_coef
+```
+However, the lasso has a substantial advantage over ridge regression in that the resulting coefficient estimates are sparse. Here we see that 6 of
+the 10 coefficient estimates are exactly zero. So the lasso model with $\lambda$ chosen by cross-validation contains only **four variables**.
+
+## g. Finally, use the function you make in Part (f) with k = 5,then extract the vector of cross validation errors (say, CVV) and the grid L that is used. Make a plot of L vs. CVV.
+```{r CVV}
+k = 5
+set.seed(1)
+ncv=ceiling(n/k)
+cv=rep(1:k,ncv)
+cv.sample=sample(cv,n,replace=F)
+
+# cross validation
+MSE = c(); cvv.err = c()
+for (i in 1:100) {
+  for (j in 1:k) {
+    # train the first model on all (first fold)
+    train = dat[cv.random!=j,]
+    response = train$y
+    design = train[,(2:(i+1))]
+    m = lm(response~as.matrix(design))
+    coef = coef(m)
+    # MSE on test data (first fold)
+    test = dat[cv.random==j,]
+    resp.values=test$y
+    # recall predicted values
+    fitted.values = as.matrix(cbind(1,test[,(2:(i+1))])) %*% coef
+    MSE[j] = mean((resp.values-fitted.values)^2)
+  }
+  # calculate cross validation error each values
+  cvv.err[i] = mean(MSE)
+}
+# CVV Error
+CVV <- cvv.err
+CVV
+
+# Show grid L vs CVV
+plot(grid, CVV, main='Plot of L vs. CVV', xlab = 'Grid L', ylab = 'CVV')
+```
+

@@ -1,0 +1,99 @@
+---
+title: "Quiz1"
+author: "Nam Jun Lee"
+date: '09/22/2021'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+library(car)
+library(MASS)
+```
+
+## a. Import the data set in R.
+
+```{r read data}
+# dataset into dat
+dat <- read.csv('Quiz1data-2.csv')
+```
+
+Read in the Quiz 1 data csv file from working directory.
+
+
+## b. The data contains the variables y, X1, X2 and X3. The objective of this problem is to predict the response y based on X1, X2 and X3 and to determine which variables are significantly associated with the response. Perform a multiple regression to answer this question. Provide a prediction at X1 = 0.25, X2 = 0.5, X3 = 0 and compute the corresponding confidence and prediction intervals.
+```{r model1}
+# multiple regression 
+lm.fit <- lm(y~X1+X2+X3, data=dat)
+# summary multiple regression
+summary(lm.fit)
+# prediction interval at X1 = 0.25, X2 = 0.5, X3 = 0
+predict(lm.fit, data.frame(X1=c(0.25),X2=c(0.5),X3=c(0)), interval = 'prediction')
+# confidence interval at X1 = 0.25, X2 = 0.5, X3 = 0
+predict(lm.fit, data.frame(X1=c(0.25),X2=c(0.5),X3=c(0)), interval = 'confidence')
+```
+
+It may reject the null hypothesis for **X3** at the 0.001 level. each **X1**, **X2** predictor are not statistically significant to the response variable.
+Also RSE is **2.525** and Adjusted R-squared is **16.23%**.
+The distance between the prediction interval and the confidence interval is wide.
+
+
+## c. Analyse the residuals to detect potential problems with your analysis in part (b).
+```{r residual plots}
+# diagnostic plots of the least squares regression
+par(mfrow = c(2,2))
+plot(lm.fit)
+```
+
+The **residual versus fitted** plot does not follow a normal distribution with constant variance. **Normal Q-Q** plot shows that the residuals follow the standard deviation well, but there are several outliers. Also, there are several outliers in the **scale location** plot, and the distribution is skewed to one side. The plot of the **residuals versus leverage** shows that the residual exceeds cook's distance.
+
+## d. Propose solutions to the problems that you detect in part (c) and implement them on the data set. [Hint: studentized residual can be computed using the function studres(), cooks distance using cooks.distance() and the variance inflation factor using vif(). The function vif() is part of the R package car which you may need to install and unpack].
+```{r implement}
+# find outliers
+studentized <- studres(lm.fit)
+plot(studentized)
+# find high leverage points
+cd <- cooks.distance(lm.fit)
+plot(cd)
+# check variance inflation factor
+vif(lm.fit)
+
+# outlier (> 3)
+outlier_stu <- which(abs(studentized) > 3)
+# total row in dat
+n <- nrow(dat)
+# high leverage (>4/n)
+leverage_high <- which(cd>4/n)
+
+# union outliers and high leverage points
+remove_out <- union(outlier_stu, leverage_high)
+# show outliers and high leverage points
+remove_out
+
+# remove outliers and high leverage points into newdata
+newdata <- dat[-remove_out, ]
+```
+
+As a result of checking the multicollinearity, it can be confirmed that X1 and X2 were high. 
+first, the outliers and high leverage detected in part c are remove, the data set is to be implemented again. Using the studres() function, remove residuals exceeding -3 and 3 and using the cooks.distance function to remove leverage exceeding the distance. And entered it in the new data, 'newdata'.
+
+## e. Rerun your analysis of part (a) on the data that you obtain from part (d)
+```{r change fit}
+# data that obtain from part (d)
+lm.fit1 <- lm(y~X1+X2+X3, data=newdata)
+summary(lm.fit1)
+par(mfrow = c(2,2))
+plot(lm.fit1)
+```
+
+It may reject the null hypothesis for all **X1**, **X2**, and **X3** at the 0.001 level. As such, it can be seen that the predictor is statistically significant for the response variable. Also RSE is **0.9532** and Adjusted R-squared is **57.86%**.
+
+## f. Provide a prediction at X1 = 0.25, X2 = 0.5, X3 = 0 and compute the corresponding confidence and prediction intervals. Compare with the prediction in part (a) and comment on which you think is more believable.
+```{r model2}
+# prediction interval new data
+predict(lm.fit1, data.frame(X1=c(0.25),X2=c(0.5),X3=c(0)), interval = 'prediction')
+# confidence interval new data
+predict(lm.fit1, data.frame(X1=c(0.25),X2=c(0.5),X3=c(0)), interval = 'confidence')
+```
+
+Compared to the prediction in part (a), **I think the newly constructed model (model 2) is more reliable**. Because in the newly constructed model, all predictors are statistically significant to the response variable. And the RSE was significantly lower and the adjusted R-squared increased. This is also because the distance between the prediction interval and the confidence interval is much narrower.

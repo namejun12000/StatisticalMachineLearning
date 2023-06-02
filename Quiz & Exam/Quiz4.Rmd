@@ -1,0 +1,99 @@
+---
+title: "Quiz4"
+author: "Nam Jun Lee"
+date: '12/02/2021'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+library(ISLR)
+library(MASS)
+library(splines)
+library(ggplot2)
+library(leaps)
+library(boot)
+```
+
+# This question uses the variables dis(the weighted mean of distances to five boston employment centers) and nox(nitrogen oxide concentrations in parts per 10 million) from the Boston data in the ISLR package. We will treat dis as the predictor and nox as response.
+
+```{r boston}
+# Boston dataset into bt variable
+bt <- MASS::Boston
+# summary of bt dataset
+summary(bt)
+```
+
+# Q1. Use the poly() function to fit polynomial regression to the above data. Use a range of different polynomial degrees and choose the best fitting degree by using the anova() function. (Recall that all models being used here are nested). Compute $MSE = \frac{1}{n} \sum_{i=1}^{n}(y{i}-\hat{y}{i})^2$ for the best fitting model.
+
+```{r poly}
+# fit the range of different polynomial degrees
+fit_poly1 <- lm(nox~poly(dis,3,raw=T), data=bt)
+fit_poly2 <- lm(nox~poly(dis,4,raw=T), data=bt)
+fit_poly3 <- lm(nox~poly(dis,5,raw=T), data=bt)
+fit_poly4 <- lm(nox~poly(dis,6,raw=T), data=bt)
+fit_poly5 <- lm(nox~poly(dis,7,raw=T), data=bt)
+fit_poly6 <- lm(nox~poly(dis,8,raw=T), data=bt)
+fit_poly7 <- lm(nox~poly(dis,9,raw=T), data=bt)
+fit_poly8 <- lm(nox~poly(dis,10,raw=T), data=bt)
+# find best fitting degree 
+anova(fit_poly1, fit_poly2, fit_poly3, fit_poly4, fit_poly5, fit_poly6, fit_poly7, fit_poly8, test="F")
+# compute MSE
+mean(fit_poly4$residuals^2)
+```
+
+As a result of evaluating the model using the range of eight polynomial orders, the p-value of Model 4 is most suitable at **0.001657**.  
+Model 4's MSE: **0.003711971**.
+
+# Q2. Fit a natural cubic spline to the above data using ns() function. Choose 4 equally spaced knots. Compute $MSE = \frac{1}{n} \sum_{i=1}^{n}(y{i}-\hat{y}{i})^2$ for this.
+
+```{r spline}
+# ns() function to implement natural splines and 4 equally spaced knots
+fit_spline <- lm(nox~ns(dis,knots = c(2,4,6,8)), data=bt)
+# degree of the spline will default to three
+dis.lims <- range(bt$dis)
+dis.grid <- seq(dis.lims[1], dis.lims[2], length.out = 100)
+pred <- predict(fit_spline, newdata = list(dis=dis.grid),se=T)
+# fit default
+fitted <- pred$fit
+lower <- fitted - 2 * pred$se.fit
+upper <- fitted + 2 * pred$se.fit
+numpred <- length(dis.grid)
+df.spline <- data.frame(value = c(fitted, lower, upper), 
+                        type = c(rep("fit",numpred),
+                                 rep("lower",numpred),
+                                 rep("upper",numpred)),
+                        dis = rep(dis.grid, 3))
+# show graph
+ggplot() + geom_line(data = df.spline, aes(x=dis, y= value, color = type, linetype=type)) + geom_point(data=bt, aes(x=dis, y= nox), size=0.1, colour="grey") + ggtitle("nox vs dis")
+# compute MSE
+mean(fit_spline$residuals^2)
+```
+As a result of the fit by knots of the natural cubic spline to 2,4,6,8 it can be seen that the MSE is **0.003761604**.
+
+# Q3. Recall the idea of cross validation from earlier in the semester where the data is repeatedly broken in testing and training in order to compute a cross validation error. Perform a 5-fold cross validation over the number of knots (say, 2,4,6,8,10), to choose the best fitting natural cubic spline. Report MSE for the best fitting model.
+
+```{r sfasd}
+# set seed
+set.seed(1)
+# set number of knots 
+knot <- c(2,4,6,8,10)
+ran <- knot
+# set mse range 
+cv.error <- rep(0,5)
+for (i in ran) {
+  fit.cv.spline <- glm(nox ~ ns(dis, df=i), data = bt)
+  cv.error[i-5] = cv.glm(bt, fit.cv.spline, K=5)$delta[1] # compute cv error
+}
+# show plot
+plot(ran, cv.error, xlab="Degree", ylab="CV error")
+lines(ran, cv.error, lwd=2, col="darkgreen")
+title(main="Degrees of freedom with CV error")
+# best fitting natural cubic spline
+fit.cv.best <- lm(nox~ns(dis,knots=6), data=bt)
+#MSE
+mean(fit.cv.best$residuals^2)
+```
+
+As a result of performing 5-fold cross-validation after grouping knots to 2,4,6,8,10, it is most suitable because the cv error of **knot 6** was the lowest.  
+MSE: **0.004103866**.
